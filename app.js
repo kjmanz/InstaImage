@@ -386,7 +386,6 @@ function createDesignPrompt(slide, variationKey, revision = '') {
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
-- 右下に小さく「${CONFIG.BRAND_NAME}」と表示
 
 【スライド情報】
 - スライド番号: ${slide.number}
@@ -425,7 +424,6 @@ ${designStyle}
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
-- 右下に小さく「${CONFIG.BRAND_NAME}」と表示
 - 全体の統一感を保つこと
 
 【スライド情報】
