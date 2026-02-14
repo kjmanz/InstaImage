@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>インスタ画像ジェネレーター</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>インスタ画像ジェネレーター</h1>
+            <p class="subtitle">住まいるでんき館きょうしん</p>
+            <button id="settingsBtn" class="settings-btn">⚙️ APIキー設定</button>
+        </header>
+
+        <!-- APIキー設定モーダル -->
+        <div id="apiModal" class="modal hidden">
+            <div class="modal-content">
+                <h2>APIキー設定</h2>
+                <p>Google AI StudioのAPIキーを入力してください</p>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">APIキーを取得 →</a>
+                <input type="password" id="apiKeyInput" placeholder="APIキーを入力">
+                <div class="modal-buttons">
+                    <button id="saveApiKey" class="btn btn-primary">保存</button>
+                    <button id="closeModal" class="btn btn-secondary">キャンセル</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ローディングオーバーレイ -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loadingMessage">処理中...</p>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <p id="progressText"></p>
+            </div>
+        </div>
+
+        <!-- STEP 1: 投文案入力 -->
+        <section id="step1" class="step">
+            <div class="step-header">
+                <span class="step-number">STEP 1</span>
+                <h2>投稿案を入力</h2>
+            </div>
+            <div class="step-content">
+                <div class="input-guide">
+                    <p>LINE投稿案のテキストをコピペしてください。</p>
+                    <p class="hint">※ 「■ 1枚目」「■ 2枚目」の形式でカルーセル構造を検出します</p>
+                </div>
+                <textarea id="inputText" placeholder="ここに投稿案をコピペしてください...
+
+例：
+■ 1枚目（表紙）
+毎朝、窓がビショビショ…
+放っておくとヤバいです
+
+■ 2枚目
+対策①
+朝イチでサッと拭き取る
+100均のワイパーが手軽でおすすめ♪
+
+■ 3枚目
+対策②
+..."></textarea>
+                <div class="input-actions">
+                    <span id="charCount">0文字</span>
+                    <button id="generateBtn" class="btn btn-primary btn-large">🎨 デザイン案を生成</button>
+                </div>
+                <div id="parsePreview" class="parse-preview hidden">
+                    <h3>構造プレビュー</h3>
+                    <div id="slideCount"></div>
+                    <div id="slideStructure"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 2: デザイン案選択 -->
+        <section id="step2" class="step hidden">
+            <div class="step-header">
+                <span class="step-number">STEP 2</span>
+                <h2>デザイン案を選択</h2>
+            </div>
+            <div class="step-content">
+                <div class="design-options">
+                    <div class="design-option" data-option="A">
+                        <div class="option-label">案 A</div>
+                        <div class="option-desc">シンプル＆クリーン</div>
+                        <div class="option-preview" id="previewA">
+                            <div class="placeholder">生成中...</div>
+                        </div>
+                        <button class="btn btn-select" data-option="A">この案を選択</button>
+                    </div>
+                    <div class="design-option" data-option="B">
+                        <div class="option-label">案 B</div>
+                        <div class="option-desc">パステル＆イラスト</div>
+                        <div class="option-preview" id="previewB">
+                            <div class="placeholder">生成中...</div>
+                        </div>
+                        <button class="btn btn-select" data-option="B">この案を選択</button>
+                    </div>
+                    <div class="design-option" data-option="C">
+                        <div class="option-label">案 C</div>
+                        <div class="option-desc">写真風オーバーレイ</div>
+                        <div class="option-preview" id="previewC">
+                            <div class="placeholder">生成中...</div>
+                        </div>
+                        <button class="btn btn-select" data-option="C">この案を選択</button>
+                    </div>
+                </div>
+                <div class="revision-section">
+                    <h3>修正指示（オプション）</h3>
+                    <textarea id="revisionInput" placeholder="例：もう少しポップに / 文字を大きく / 背景を青系に"></textarea>
+                    <button id="regenerateBtn" class="btn btn-secondary">🔄 デザイン案を再生成</button>
+                </div>
+                <div class="step-actions">
+                    <button id="backToStep1" class="btn btn-secondary">← 戻る</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 3: 全スライド生成 -->
+        <section id="step3" class="step hidden">
+            <div class="step-header">
+                <span class="step-number">STEP 3</span>
+                <h2>全スライド生成</h2>
+            </div>
+            <div class="step-content">
+                <div class="generation-progress">
+                    <p id="generationStatus">準備中...</p>
+                    <div class="progress-bar large">
+                        <div id="generationProgress" class="progress-fill"></div>
+                    </div>
+                </div>
+                <div id="slidesContainer" class="slides-container">
+                    <!-- 動的に生成されるスライド -->
+                </div>
+                <div class="download-section">
+                    <button id="downloadZip" class="btn btn-primary btn-large" disabled>
+                        📥 一括ダウンロード（ZIP）
+                    </button>
+                </div>
+                <div class="step-actions">
+                    <button id="backToStep2" class="btn btn-secondary">← デザイン選択に戻る</button>
+                    <button id="startOver" class="btn btn-secondary">最初からやり直す</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- エラー表示 -->
+        <div id="errorContainer" class="error-container hidden">
+            <div class="error-content">
+                <span class="error-icon">⚠️</span>
+                <p id="errorMessage"></p>
+                <button id="retryBtn" class="btn btn-primary hidden">再試行</button>
+                <button id="dismissError" class="btn btn-secondary">閉じる</button>
+            </div>
+        </div>
+
+        <!-- 成功メッセージ -->
+        <div id="successContainer" class="success-container hidden">
+            <div class="success-content">
+                <span class="success-icon">✅</span>
+                <p id="successMessage"></p>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Powered by Gemini AI | 住まいるでんき館きょうしん</p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
