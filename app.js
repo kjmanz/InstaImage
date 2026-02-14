@@ -123,6 +123,7 @@ function initElements() {
     elements.refDropZone = document.getElementById('refDropZone');
     elements.refFileInput = document.getElementById('refFileInput');
     elements.refPreviewContainer = document.getElementById('refPreviewContainer');
+    elements.regenerateWithRefBtn = document.getElementById('regenerateWithRefBtn');
 }
 
 function setupEventListeners() {
@@ -190,6 +191,7 @@ function setupEventListeners() {
         elements.refDropZone.classList.remove('drag-over');
         handleRefFiles(e.dataTransfer.files);
     });
+    elements.regenerateWithRefBtn.addEventListener('click', regenerateDesigns);
 }
 
 // ===== APIキー管理 =====
@@ -826,6 +828,7 @@ function resetAll() {
     elements.downloadZip.disabled = true;
     elements.refPreviewContainer.innerHTML = '';
     elements.refFileInput.value = '';
+    elements.regenerateWithRefBtn.classList.add('hidden');
 
     ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
         const preview = document.getElementById(`preview${opt}`);
@@ -893,6 +896,13 @@ function renderRefPreviews() {
         });
         elements.refPreviewContainer.appendChild(item);
     });
+
+    // 参考画像があるときは再生成ボタンを表示
+    if (state.referenceImages.length > 0) {
+        elements.regenerateWithRefBtn.classList.remove('hidden');
+    } else {
+        elements.regenerateWithRefBtn.classList.add('hidden');
+    }
 }
 
 // ===== ユーティリティ =====

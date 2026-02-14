@@ -812,6 +812,15 @@ textarea::placeholder {
     transform: scale(1.15);
 }
 
+.ref-regenerate-btn {
+    margin-top: 16px;
+    width: 100%;
+}
+
+.ref-regenerate-btn.hidden {
+    display: none;
+}
+
 /* ========================================
    Design Options (STEP 2)
    ======================================== */

@@ -105,20 +105,6 @@
                     <div id="slideCount"></div>
                     <div id="slideStructure"></div>
                 </div>
-
-                <!-- 参考画像アップロード -->
-                <div class="reference-section">
-                    <h3>📎 参考デザイン（オプション）</h3>
-                    <p class="hint">過去の投稿画像をアップロードすると、そのデザインテイストを参考に生成します</p>
-                    <div id="refDropZone" class="ref-drop-zone">
-                        <div class="ref-drop-content">
-                            <span class="ref-drop-icon">🖼️</span>
-                            <p>画像をドラッグ＆ドロップ<br>または<span class="ref-browse">クリックして選択</span></p>
-                        </div>
-                        <input type="file" id="refFileInput" accept="image/*" multiple hidden>
-                    </div>
-                    <div id="refPreviewContainer" class="ref-preview-container"></div>
-                </div>
             </div>
         </section>
 
@@ -171,6 +157,23 @@
                         <button class="btn btn-select" data-option="E">この案を選択</button>
                     </div>
                 </div>
+
+                <!-- 参考画像アップロード -->
+                <div class="reference-section">
+                    <h3>📎 過去の投稿デザインを参考にする（オプション）</h3>
+                    <p class="hint">過去の投稿画像をアップロードすると、そのデザインテイストを参考にデザイン案を再生成します</p>
+                    <div id="refDropZone" class="ref-drop-zone">
+                        <div class="ref-drop-content">
+                            <span class="ref-drop-icon">🖼️</span>
+                            <p>過去の投稿画像をドラッグ＆ドロップ<br>または<span class="ref-browse">クリックして選択</span></p>
+                        </div>
+                        <input type="file" id="refFileInput" accept="image/*" multiple hidden>
+                    </div>
+                    <div id="refPreviewContainer" class="ref-preview-container"></div>
+                    <button id="regenerateWithRefBtn" class="btn btn-primary ref-regenerate-btn hidden">🎨
+                        この参考デザインで再生成</button>
+                </div>
+
                 <div class="revision-section">
                     <h3>修正指示（オプション）</h3>
                     <textarea id="revisionInput" placeholder="例：もう少しポップに / 文字を大きく / 背景を青系に"></textarea>
