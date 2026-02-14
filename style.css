@@ -635,3 +635,86 @@ footer {
 .generating {
     animation: pulse 1.5s ease-in-out infinite;
 }
+
+/* 設定グループ */
+.setting-group {
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.setting-group label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: var(--text-color);
+}
+
+.setting-group .setting-desc {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+/* アスペクト比オプション */
+.aspect-options {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.aspect-option {
+    cursor: pointer;
+}
+
+.aspect-option input {
+    display: none;
+}
+
+.aspect-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px 20px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius);
+    transition: all 0.2s;
+}
+
+.aspect-option input:checked + .aspect-box {
+    border-color: var(--primary-color);
+    background: rgba(66, 133, 244, 0.1);
+}
+
+.aspect-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+
+.aspect-icon.square {
+    aspect-ratio: 1;
+    width: 40px;
+    height: 40px;
+}
+
+.aspect-icon.portrait {
+    width: 32px;
+    height: 40px;
+}
+
+.aspect-label {
+    font-weight: bold;
+    font-size: 1rem;
+    color: var(--text-color);
+}
+
+.aspect-desc {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.aspect-option input:checked + .aspect-box .aspect-label {
+    color: var(--primary-color);
+}

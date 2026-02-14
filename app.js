@@ -11,9 +11,10 @@ const CONFIG = {
     BRAND_NAME: '住まいるでんき館きょうしん',
     MAX_RETRIES: 3,
     TIMEOUT_MS: 60000,
-    IMAGE_SIZE: '1K',
-    ASPECT_RATIO: '1:1'
+    IMAGE_SIZE: '1K'
 };
+
+const DEFAULT_ASPECT_RATIO = '4:5'; // デフォルトは縦長
 
 const DESIGN_VARIATIONS = {
     A: {
@@ -33,6 +34,7 @@ const DESIGN_VARIATIONS = {
 // ===== グローバル状態 =====
 let state = {
     apiKey: null,
+    aspectRatio: DEFAULT_ASPECT_RATIO,
     parsedSlides: null,
     slideData: null,
     designOptions: { A: null, B: null, C: null },
@@ -106,6 +108,11 @@ function setupEventListeners() {
     // APIキー設定
     elements.settingsBtn.addEventListener('click', () => {
         elements.apiKeyInput.value = state.apiKey || '';
+        // 現在のアスペクト比を選択
+        const aspectRadio = document.querySelector(`input[name="aspectRatio"][value="${state.aspectRatio}"]`);
+        if (aspectRadio) {
+            aspectRadio.checked = true;
+        }
         elements.apiModal.classList.remove('hidden');
     });
     elements.saveApiKey.addEventListener('click', saveApiKey);
@@ -142,6 +149,7 @@ function setupEventListeners() {
 // ===== APIキー管理 =====
 function loadApiKey() {
     state.apiKey = localStorage.getItem('gemini_api_key');
+    state.aspectRatio = localStorage.getItem('aspect_ratio') || DEFAULT_ASPECT_RATIO;
     if (!state.apiKey) {
         elements.apiModal.classList.remove('hidden');
     }
@@ -154,9 +162,17 @@ function saveApiKey() {
         return;
     }
     state.apiKey = key;
+
+    // アスペクト比を保存
+    const selectedAspect = document.querySelector('input[name="aspectRatio"]:checked');
+    if (selectedAspect) {
+        state.aspectRatio = selectedAspect.value;
+        localStorage.setItem('aspect_ratio', state.aspectRatio);
+    }
+
     localStorage.setItem('gemini_api_key', key);
     elements.apiModal.classList.add('hidden');
-    showSuccess('APIキーを保存しました');
+    showSuccess('設定を保存しました');
 }
 
 function getApiKey() {
@@ -322,7 +338,7 @@ async function generateImage(prompt, referenceImage = null) {
         {
             responseModalities: ['TEXT', 'IMAGE'],
             imageConfig: {
-                aspectRatio: CONFIG.ASPECT_RATIO,
+                aspectRatio: state.aspectRatio,
                 imageSize: CONFIG.IMAGE_SIZE
             }
         }
@@ -348,10 +364,12 @@ function createDesignPrompt(slide, variationKey, revision = '') {
             ? '行動喚起デザイン。「お気軽にご相談ください」などのCTAを強調。'
             : '情報整理されたコンテンツスライド。番号と見出しを明確に。';
 
+    const aspectText = state.aspectRatio === '1:1' ? '正方形（1:1）' : '縦長（4:5）';
+
     return `以下の条件でInstagramカルーセル投稿の${slide.number}枚目の画像を生成してください。
 
 【基本仕様】
-- 正方形（1:1）のInstagram投稿画像
+- ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
 - 右下に小さく「${CONFIG.BRAND_NAME}」と表示
@@ -382,13 +400,15 @@ function createSlidePrompt(slide, designStyle, prevImage = null) {
         ? `添付画像のデザインスタイルを踏襲して、以下の条件で${slide.number}枚目のスライド画像を生成してください。`
         : `以下の条件でInstagramカルーセル投稿の${slide.number}枚目の画像を生成してください。`;
 
+    const aspectText = state.aspectRatio === '1:1' ? '正方形（1:1）' : '縦長（4:5）';
+
     return `${basePrompt}
 
 【踏襲するデザインスタイル】
 ${designStyle}
 
 【基本仕様】
-- 正方形（1:1）のInstagram投稿画像
+- ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
 - 右下に小さく「${CONFIG.BRAND_NAME}」と表示
@@ -719,6 +739,7 @@ async function downloadAllAsZip() {
 function resetAll() {
     state = {
         apiKey: state.apiKey,
+        aspectRatio: state.aspectRatio,
         parsedSlides: null,
         slideData: null,
         designOptions: { A: null, B: null, C: null },

@@ -17,10 +17,38 @@
         <!-- APIキー設定モーダル -->
         <div id="apiModal" class="modal hidden">
             <div class="modal-content">
-                <h2>APIキー設定</h2>
-                <p>Google AI StudioのAPIキーを入力してください</p>
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">APIキーを取得 →</a>
-                <input type="password" id="apiKeyInput" placeholder="APIキーを入力">
+                <h2>設定</h2>
+
+                <div class="setting-group">
+                    <label>APIキー</label>
+                    <p class="setting-desc">Google AI StudioのAPIキーを入力してください</p>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">APIキーを取得 →</a>
+                    <input type="password" id="apiKeyInput" placeholder="APIキーを入力">
+                </div>
+
+                <div class="setting-group">
+                    <label>アスペクト比</label>
+                    <p class="setting-desc">生成する画像の縦横比を選択</p>
+                    <div class="aspect-options">
+                        <label class="aspect-option">
+                            <input type="radio" name="aspectRatio" value="1:1">
+                            <span class="aspect-box">
+                                <span class="aspect-icon square"></span>
+                                <span class="aspect-label">1:1</span>
+                                <span class="aspect-desc">正方形</span>
+                            </span>
+                        </label>
+                        <label class="aspect-option">
+                            <input type="radio" name="aspectRatio" value="4:5">
+                            <span class="aspect-box">
+                                <span class="aspect-icon portrait"></span>
+                                <span class="aspect-label">4:5</span>
+                                <span class="aspect-desc">縦長（推奨）</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="modal-buttons">
                     <button id="saveApiKey" class="btn btn-primary">保存</button>
                     <button id="closeModal" class="btn btn-secondary">キャンセル</button>
