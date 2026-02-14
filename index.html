@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>インスタ画像ジェネレーター</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -213,6 +215,12 @@
         </div>
     </div>
 
+    <!-- ライトボックス -->
+    <div id="lightbox" class="lightbox hidden">
+        <button id="lightboxClose" class="lightbox-close">&times;</button>
+        <img id="lightboxImg" class="lightbox-img" alt="拡大画像">
+    </div>
+
     <footer>
         <p>Powered by Gemini AI | 住まいるでんき館きょうしん</p>
     </footer>
@@ -220,4 +228,5 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>

@@ -112,6 +112,11 @@ function initElements() {
     elements.dismissError = document.getElementById('dismissError');
     elements.successContainer = document.getElementById('successContainer');
     elements.successMessage = document.getElementById('successMessage');
+
+    // ライトボックス
+    elements.lightbox = document.getElementById('lightbox');
+    elements.lightboxImg = document.getElementById('lightboxImg');
+    elements.lightboxClose = document.getElementById('lightboxClose');
 }
 
 function setupEventListeners() {
@@ -154,6 +159,15 @@ function setupEventListeners() {
 
     // エラー
     elements.dismissError.addEventListener('click', hideError);
+
+    // ライトボックス
+    elements.lightboxClose.addEventListener('click', closeLightbox);
+    elements.lightbox.addEventListener('click', (e) => {
+        if (e.target === elements.lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+    });
 }
 
 // ===== APIキー管理 =====
@@ -382,7 +396,7 @@ function createDesignPrompt(slide, variationKey, revision = '') {
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
-- 右下に小さく「${CONFIG.BRAND_NAME}」と表示
+- 店名やブランド名は画像に含めないでください
 
 【スライド情報】
 - スライド番号: ${slide.number}
@@ -421,7 +435,7 @@ ${designStyle}
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
-- 右下に小さく「${CONFIG.BRAND_NAME}」と表示
+- 店名やブランド名は画像に含めないでください
 - 全体の統一感を保つこと
 
 【スライド情報】
@@ -480,7 +494,22 @@ function displayImage(container, base64Data) {
     const img = document.createElement('img');
     img.src = `data:image/png;base64,${base64Data}`;
     img.alt = '生成された画像';
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', () => openLightbox(img.src));
     container.appendChild(img);
+}
+
+// ===== ライトボックス =====
+function openLightbox(src) {
+    elements.lightboxImg.src = src;
+    elements.lightbox.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+    elements.lightbox.classList.add('hidden');
+    elements.lightboxImg.src = '';
+    document.body.style.overflow = '';
 }
 
 // ===== メインフロー =====
