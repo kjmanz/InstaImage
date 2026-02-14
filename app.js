@@ -115,18 +115,23 @@ function initElements() {
 
 function setupEventListeners() {
     // APIキー設定
-    elements.settingsBtn.addEventListener('click', () => {
+    elements.settingsBtn.addEventListener('click', async () => {
         elements.apiKeyInput.value = state.apiKey || '';
         // 現在のアスペクト比を選択
         const radios = document.querySelectorAll('md-radio[name="aspectRatio"]');
         radios.forEach(radio => {
             radio.checked = radio.value === state.aspectRatio;
         });
-        elements.apiModal.show();
+        // md-dialogが正しく初期化されていることを確認してから開く
+        if (elements.apiModal) {
+            await elements.apiModal.show();
+        }
     });
     elements.saveApiKey.addEventListener('click', saveApiKey);
-    elements.closeModal.addEventListener('click', () => {
-        elements.apiModal.close();
+    elements.closeModal.addEventListener('click', async () => {
+        if (elements.apiModal) {
+            await elements.apiModal.close();
+        }
     });
 
     // STEP 1
@@ -161,15 +166,19 @@ function setupEventListeners() {
 }
 
 // ===== APIキー管理 =====
-function loadApiKey() {
+async function loadApiKey() {
     state.apiKey = localStorage.getItem('gemini_api_key');
     state.aspectRatio = localStorage.getItem('aspect_ratio') || DEFAULT_ASPECT_RATIO;
     if (!state.apiKey) {
-        elements.apiModal.show();
+        // 少し遅延させてmd-dialogが完全にロードされるのを待つ
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (elements.apiModal) {
+            await elements.apiModal.show();
+        }
     }
 }
 
-function saveApiKey() {
+async function saveApiKey() {
     const key = elements.apiKeyInput.value.trim();
     if (!key) {
         showSnackbar('APIキーを入力してください', 'error');
@@ -185,7 +194,9 @@ function saveApiKey() {
     }
 
     localStorage.setItem('gemini_api_key', key);
-    elements.apiModal.close();
+    if (elements.apiModal) {
+        await elements.apiModal.close();
+    }
     showSnackbar('設定を保存しました', 'success');
 }
 
@@ -519,7 +530,9 @@ async function startGeneration() {
     }
 
     if (!getApiKey()) {
-        elements.apiModal.show();
+        if (elements.apiModal) {
+            await elements.apiModal.show();
+        }
         return;
     }
 

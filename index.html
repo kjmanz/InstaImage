@@ -41,13 +41,20 @@
     <div class="container">
         <header class="md-header">
             <div class="header-content">
-                <div class="header-text">
-                    <h1 class="md-headline-large">インスタ画像ジェネレーター</h1>
-                    <p class="md-body-medium subtitle">住まいるでんき館きょうしん</p>
+                <div class="header-branding">
+                    <div class="header-icon">
+                        <md-icon>auto_awesome</md-icon>
+                    </div>
+                    <div class="header-text">
+                        <h1 class="md-headline-large">インスタ画像ジェネレーター</h1>
+                        <p class="md-body-medium subtitle">住まいるでんき館きょうしん</p>
+                    </div>
                 </div>
-                <md-icon-button id="settingsBtn">
-                    <md-icon>settings</md-icon>
-                </md-icon-button>
+                <div class="header-actions">
+                    <md-icon-button id="settingsBtn" title="設定">
+                        <md-icon>tune</md-icon>
+                    </md-icon-button>
+                </div>
             </div>
         </header>
 
@@ -118,12 +125,15 @@
 
         <!-- STEP 1: 投文案入力 -->
         <section id="step1" class="step md-card">
-            <div class="step-header">
+            <div class="step-header step-header-1">
                 <div class="step-badge">
-                    <md-icon>edit_note</md-icon>
-                    <span>STEP 1</span>
+                    <span class="step-number">1</span>
                 </div>
-                <h2 class="md-headline-small">投稿案を入力</h2>
+                <div class="step-header-content">
+                    <h2 class="md-headline-small">投稿案を入力</h2>
+                    <p class="step-description">LINE投稿案のテキストを入力してください</p>
+                </div>
+                <md-icon class="step-icon">edit_note</md-icon>
             </div>
             <div class="step-content">
                 <div class="input-guide md-surface-variant">
@@ -155,12 +165,15 @@
 
         <!-- STEP 2: デザイン案選択 -->
         <section id="step2" class="step hidden md-card">
-            <div class="step-header">
+            <div class="step-header step-header-2">
                 <div class="step-badge">
-                    <md-icon>palette</md-icon>
-                    <span>STEP 2</span>
+                    <span class="step-number">2</span>
                 </div>
-                <h2 class="md-headline-small">デザイン案を選択</h2>
+                <div class="step-header-content">
+                    <h2 class="md-headline-small">デザイン案を選択</h2>
+                    <p class="step-description">お好みのデザインスタイルを選んでください</p>
+                </div>
+                <md-icon class="step-icon">palette</md-icon>
             </div>
             <div class="step-content">
                 <div class="design-options">
@@ -241,12 +254,15 @@
 
         <!-- STEP 3: 全スライド生成 -->
         <section id="step3" class="step hidden md-card">
-            <div class="step-header">
+            <div class="step-header step-header-3">
                 <div class="step-badge">
-                    <md-icon>collections</md-icon>
-                    <span>STEP 3</span>
+                    <span class="step-number">3</span>
                 </div>
-                <h2 class="md-headline-small">全スライド生成</h2>
+                <div class="step-header-content">
+                    <h2 class="md-headline-small">全スライド生成</h2>
+                    <p class="step-description">すべてのスライドを生成してダウンロード</p>
+                </div>
+                <md-icon class="step-icon">collections</md-icon>
             </div>
             <div class="step-content">
                 <div class="generation-progress">
@@ -285,7 +301,17 @@
     </div>
 
     <footer class="md-footer">
-        <p class="md-body-small">Powered by Gemini AI | 住まいるでんき館きょうしん</p>
+        <div class="footer-content">
+            <div class="footer-brand">
+                <md-icon>auto_awesome</md-icon>
+                <span>Powered by Gemini AI</span>
+            </div>
+            <div class="footer-divider"></div>
+            <div class="footer-credit">
+                <md-icon>home</md-icon>
+                <span>住まいるでんき館きょうしん</span>
+            </div>
+        </div>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
