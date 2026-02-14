@@ -1,7 +1,6 @@
 /**
  * インスタ投稿画像自動生成アプリ - メインロジック
  * 住まいるでんき館きょうしん
- * Material Design 3 Version
  */
 
 // ===== 定数 =====
@@ -74,7 +73,7 @@ function initElements() {
     // ローディング
     elements.loadingOverlay = document.getElementById('loadingOverlay');
     elements.loadingMessage = document.getElementById('loadingMessage');
-    elements.progressBar = document.getElementById('progressBar');
+    elements.progressFill = document.getElementById('progressFill');
     elements.progressText = document.getElementById('progressText');
 
     // STEP 1
@@ -106,32 +105,29 @@ function initElements() {
     elements.backToStep2 = document.getElementById('backToStep2');
     elements.startOver = document.getElementById('startOver');
 
-    // Snackbar
-    elements.snackbar = document.getElementById('snackbar');
-    elements.snackbarIcon = document.getElementById('snackbarIcon');
-    elements.snackbarMessage = document.getElementById('snackbarMessage');
-    elements.snackbarAction = document.getElementById('snackbarAction');
+    // エラー・成功
+    elements.errorContainer = document.getElementById('errorContainer');
+    elements.errorMessage = document.getElementById('errorMessage');
+    elements.retryBtn = document.getElementById('retryBtn');
+    elements.dismissError = document.getElementById('dismissError');
+    elements.successContainer = document.getElementById('successContainer');
+    elements.successMessage = document.getElementById('successMessage');
 }
 
 function setupEventListeners() {
     // APIキー設定
-    elements.settingsBtn.addEventListener('click', async () => {
+    elements.settingsBtn.addEventListener('click', () => {
         elements.apiKeyInput.value = state.apiKey || '';
         // 現在のアスペクト比を選択
-        const radios = document.querySelectorAll('md-radio[name="aspectRatio"]');
-        radios.forEach(radio => {
-            radio.checked = radio.value === state.aspectRatio;
-        });
-        // md-dialogが正しく初期化されていることを確認してから開く
-        if (elements.apiModal) {
-            await elements.apiModal.show();
+        const aspectRadio = document.querySelector(`input[name="aspectRatio"][value="${state.aspectRatio}"]`);
+        if (aspectRadio) {
+            aspectRadio.checked = true;
         }
+        elements.apiModal.classList.remove('hidden');
     });
     elements.saveApiKey.addEventListener('click', saveApiKey);
-    elements.closeModal.addEventListener('click', async () => {
-        if (elements.apiModal) {
-            await elements.apiModal.close();
-        }
+    elements.closeModal.addEventListener('click', () => {
+        elements.apiModal.classList.add('hidden');
     });
 
     // STEP 1
@@ -156,48 +152,37 @@ function setupEventListeners() {
     elements.backToStep2.addEventListener('click', () => showStep(2));
     elements.startOver.addEventListener('click', resetAll);
 
-    // Snackbar action
-    elements.snackbarAction.addEventListener('click', () => {
-        hideSnackbar();
-        if (elements.snackbarAction.dataset.action) {
-            eval(elements.snackbarAction.dataset.action);
-        }
-    });
+    // エラー
+    elements.dismissError.addEventListener('click', hideError);
 }
 
 // ===== APIキー管理 =====
-async function loadApiKey() {
+function loadApiKey() {
     state.apiKey = localStorage.getItem('gemini_api_key');
     state.aspectRatio = localStorage.getItem('aspect_ratio') || DEFAULT_ASPECT_RATIO;
     if (!state.apiKey) {
-        // 少し遅延させてmd-dialogが完全にロードされるのを待つ
-        await new Promise(resolve => setTimeout(resolve, 100));
-        if (elements.apiModal) {
-            await elements.apiModal.show();
-        }
+        elements.apiModal.classList.remove('hidden');
     }
 }
 
-async function saveApiKey() {
+function saveApiKey() {
     const key = elements.apiKeyInput.value.trim();
     if (!key) {
-        showSnackbar('APIキーを入力してください', 'error');
+        showError('APIキーを入力してください');
         return;
     }
     state.apiKey = key;
 
     // アスペクト比を保存
-    const selectedRadio = document.querySelector('md-radio[name="aspectRatio"][checked]');
-    if (selectedRadio) {
-        state.aspectRatio = selectedRadio.value;
+    const selectedAspect = document.querySelector('input[name="aspectRatio"]:checked');
+    if (selectedAspect) {
+        state.aspectRatio = selectedAspect.value;
         localStorage.setItem('aspect_ratio', state.aspectRatio);
     }
 
     localStorage.setItem('gemini_api_key', key);
-    if (elements.apiModal) {
-        await elements.apiModal.close();
-    }
-    showSnackbar('設定を保存しました', 'success');
+    elements.apiModal.classList.add('hidden');
+    showSuccess('設定を保存しました');
 }
 
 function getApiKey() {
@@ -397,6 +382,7 @@ function createDesignPrompt(slide, variationKey, revision = '') {
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
+- 右下に小さく「${CONFIG.BRAND_NAME}」と表示
 
 【スライド情報】
 - スライド番号: ${slide.number}
@@ -435,6 +421,7 @@ ${designStyle}
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
 - 文字は大きく、少なめに
+- 右下に小さく「${CONFIG.BRAND_NAME}」と表示
 - 全体の統一感を保つこと
 
 【スライド情報】
@@ -457,33 +444,11 @@ function showStep(stepNum) {
     if (stepNum === 1) elements.step1.classList.remove('hidden');
     if (stepNum === 2) elements.step2.classList.remove('hidden');
     if (stepNum === 3) elements.step3.classList.remove('hidden');
-
-    // ステッパーインジケーター更新
-    const stepperSteps = document.querySelectorAll('.stepper-step');
-    const stepperConnectors = document.querySelectorAll('.stepper-connector');
-    stepperSteps.forEach(s => {
-        const step = parseInt(s.dataset.step);
-        s.classList.remove('active', 'completed');
-        if (step === stepNum) s.classList.add('active');
-        else if (step < stepNum) s.classList.add('completed');
-    });
-    stepperConnectors.forEach(c => {
-        const connNum = parseInt(c.dataset.connector);
-        c.classList.toggle('completed', connNum < stepNum);
-    });
-
-    // スクロールをトップに
-    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function showLoading(message = '処理中...', progress = 0) {
     elements.loadingMessage.textContent = message;
-    if (progress > 0) {
-        elements.progressBar.removeAttribute('indeterminate');
-        elements.progressBar.value = progress / 100;
-    } else {
-        elements.progressBar.setAttribute('indeterminate', '');
-    }
+    elements.progressFill.style.width = `${progress}%`;
     elements.progressText.textContent = progress > 0 ? `${Math.round(progress)}%` : '';
     elements.loadingOverlay.classList.remove('hidden');
 }
@@ -492,36 +457,22 @@ function hideLoading() {
     elements.loadingOverlay.classList.add('hidden');
 }
 
-function showSnackbar(message, type = 'info', actionText = null, actionFn = null) {
-    elements.snackbar.className = `snackbar ${type}`;
-    elements.snackbarMessage.textContent = message;
-
-    if (type === 'error') {
-        elements.snackbarIcon.textContent = 'error';
-    } else if (type === 'success') {
-        elements.snackbarIcon.textContent = 'check_circle';
-    } else {
-        elements.snackbarIcon.textContent = 'info';
-    }
-
-    if (actionText && actionFn) {
-        elements.snackbarAction.textContent = actionText;
-        elements.snackbarAction.classList.remove('hidden');
-        elements.snackbarAction.dataset.action = actionFn.name;
-    } else {
-        elements.snackbarAction.classList.add('hidden');
-    }
-
-    elements.snackbar.classList.remove('hidden');
-
-    // 3秒後に自動で消す
-    setTimeout(() => {
-        hideSnackbar();
-    }, 3000);
+function showError(message, showRetry = false) {
+    elements.errorMessage.textContent = message;
+    elements.retryBtn.classList.toggle('hidden', !showRetry);
+    elements.errorContainer.classList.remove('hidden');
 }
 
-function hideSnackbar() {
-    elements.snackbar.classList.add('hidden');
+function hideError() {
+    elements.errorContainer.classList.add('hidden');
+}
+
+function showSuccess(message) {
+    elements.successMessage.textContent = message;
+    elements.successContainer.classList.remove('hidden');
+    setTimeout(() => {
+        elements.successContainer.classList.add('hidden');
+    }, 3000);
 }
 
 function displayImage(container, base64Data) {
@@ -539,20 +490,18 @@ async function startGeneration() {
     const text = elements.inputText.value.trim();
 
     if (!text) {
-        showSnackbar('投稿案を入力してください', 'error');
+        showError('投稿案を入力してください');
         return;
     }
 
     if (!getApiKey()) {
-        if (elements.apiModal) {
-            await elements.apiModal.show();
-        }
+        elements.apiModal.classList.remove('hidden');
         return;
     }
 
     const quickSlides = detectSlides(text);
     if (quickSlides.length === 0) {
-        showSnackbar('カルーセル構造が検出できませんでした。「■ 1枚目」「■ 2枚目」の形式で入力してください', 'error');
+        showError('カルーセル構造が検出できませんでした。「■ 1枚目」「■ 2枚目」の形式で入力してください');
         return;
     }
 
@@ -571,7 +520,11 @@ async function startGeneration() {
         hideLoading();
     } catch (error) {
         hideLoading();
-        showSnackbar(error.message, 'error', '再試行', startGeneration);
+        showError(error.message, true);
+        elements.retryBtn.onclick = () => {
+            hideError();
+            startGeneration();
+        };
     } finally {
         state.isGenerating = false;
     }
@@ -586,7 +539,7 @@ async function generateDesignOptions() {
     const previews = [elements.previewA, elements.previewB, elements.previewC, elements.previewD, elements.previewE];
 
     previews.forEach(p => {
-        p.innerHTML = '<div class="placeholder"><md-circular-progress indeterminate></md-circular-progress></div>';
+        p.innerHTML = '<div class="placeholder generating">生成中...</div>';
     });
 
     await Promise.all(options.map(async (opt, i) => {
@@ -610,10 +563,10 @@ async function regenerateDesigns() {
         showLoading('デザイン案を再生成中...', 0);
         await generateDesignOptions();
         hideLoading();
-        showSnackbar('デザイン案を再生成しました', 'success');
+        showSuccess('デザイン案を再生成しました');
     } catch (error) {
         hideLoading();
-        showSnackbar(error.message, 'error');
+        showError(error.message);
     } finally {
         state.isGenerating = false;
     }
@@ -621,7 +574,7 @@ async function regenerateDesigns() {
 
 async function selectDesign(optionKey) {
     if (!state.designOptions[optionKey]) {
-        showSnackbar('このデザイン案の画像が生成されていません', 'error');
+        showError('このデザイン案の画像が生成されていません');
         return;
     }
 
@@ -655,7 +608,7 @@ async function generateAllSlides() {
 
             showLoading(`スライド ${i + 1}/${totalSlides} を生成中...`, progress);
             elements.generationStatus.textContent = `${i + 1}/${totalSlides}枚目を生成中...`;
-            elements.generationProgress.value = progress / 100;
+            elements.generationProgress.style.width = `${progress}%`;
 
             const slideEl = createSlideElement(i + 1);
             elements.slidesContainer.appendChild(slideEl);
@@ -683,11 +636,11 @@ async function generateAllSlides() {
         hideLoading();
         elements.generationStatus.textContent = '生成完了！';
         elements.downloadZip.disabled = false;
-        showSnackbar('全スライドの生成が完了しました', 'success');
+        showSuccess('全スライドの生成が完了しました');
 
     } catch (error) {
         hideLoading();
-        showSnackbar(error.message, 'error');
+        showError(error.message);
     }
 }
 
@@ -698,17 +651,11 @@ function createSlideElement(slideNum) {
     div.innerHTML = `
         <div class="slide-number">${slideNum}枚目</div>
         <div class="slide-preview">
-            <div class="placeholder">
-                <md-circular-progress indeterminate></md-circular-progress>
-            </div>
+            <div class="placeholder generating">生成中...</div>
         </div>
         <div class="slide-actions">
-            <md-icon-button class="download-btn" disabled>
-                <md-icon>download</md-icon>
-            </md-icon-button>
-            <md-icon-button class="regenerate-btn" disabled>
-                <md-icon>refresh</md-icon>
-            </md-icon-button>
+            <button class="btn btn-secondary download-btn" disabled>📥</button>
+            <button class="btn btn-secondary regenerate-btn" disabled>🔄</button>
         </div>
     `;
 
@@ -741,11 +688,11 @@ async function regenerateSlide(slideNum) {
         displayImage(previewEl, imageData);
 
         hideLoading();
-        showSnackbar(`スライド ${slideNum} を再生成しました`, 'success');
+        showSuccess(`スライド ${slideNum} を再生成しました`);
 
     } catch (error) {
         hideLoading();
-        showSnackbar(error.message, 'error');
+        showError(error.message);
     }
 }
 
@@ -754,7 +701,7 @@ function downloadSingleSlide(slideNum) {
     const base64Data = state.generatedSlides[index];
 
     if (!base64Data) {
-        showSnackbar('このスライドの画像がありません', 'error');
+        showError('このスライドの画像がありません');
         return;
     }
 
@@ -766,7 +713,7 @@ function downloadSingleSlide(slideNum) {
 
 async function downloadAllAsZip() {
     if (state.generatedSlides.length === 0) {
-        showSnackbar('ダウンロードする画像がありません', 'error');
+        showError('ダウンロードする画像がありません');
         return;
     }
 
@@ -791,11 +738,11 @@ async function downloadAllAsZip() {
         link.download = `instagram_slides_${Date.now()}.zip`;
         link.click();
 
-        showSnackbar('ZIPファイルをダウンロードしました', 'success');
+        showSuccess('ZIPファイルをダウンロードしました');
 
     } catch (error) {
         hideLoading();
-        showSnackbar('ZIP作成に失敗しました: ' + error.message, 'error');
+        showError('ZIP作成に失敗しました: ' + error.message);
     }
 }
 
@@ -821,7 +768,7 @@ function resetAll() {
 
     ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
         const preview = document.getElementById(`preview${opt}`);
-        preview.innerHTML = '<div class="placeholder"><md-circular-progress indeterminate></md-circular-progress></div>';
+        preview.innerHTML = '<div class="placeholder">生成中...</div>';
     });
 
     document.querySelectorAll('.design-option').forEach(el => {
