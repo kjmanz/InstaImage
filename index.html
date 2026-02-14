@@ -4,217 +4,288 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>インスタ画像ジェネレーター</title>
+
+    <!-- Material Design 3 -->
+    <script type="importmap">
+    {
+        "imports": {
+            "@material/web/": "https://esm.run/@material/web/"
+        }
+    }
+    </script>
+    <script type="module">
+        import '@material/web/button/filled-button.js';
+        import '@material/web/button/outlined-button.js';
+        import '@material/web/button/text-button.js';
+        import '@material/web/button/icon-button.js';
+        import '@material/web/icon/icon.js';
+        import '@material/web/dialog/dialog.js';
+        import '@material/web/textfield/outlined-text-field.js';
+        import '@material/web/switch/switch.js';
+        import '@material/web/radio/radio.js';
+        import '@material/web/linearprogress/linear-progress.js';
+        import '@material/web/circularprogress/circular-progress.js';
+    </script>
+
+    <!-- Material Symbols -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>インスタ画像ジェネレーター</h1>
-            <p class="subtitle">住まいるでんき館きょうしん</p>
-            <button id="settingsBtn" class="settings-btn">⚙️ APIキー設定</button>
+        <header class="md-header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1 class="md-headline-large">インスタ画像ジェネレーター</h1>
+                    <p class="md-body-medium subtitle">住まいるでんき館きょうしん</p>
+                </div>
+                <md-icon-button id="settingsBtn">
+                    <md-icon>settings</md-icon>
+                </md-icon-button>
+            </div>
         </header>
 
-        <!-- APIキー設定モーダル -->
-        <div id="apiModal" class="modal hidden">
-            <div class="modal-content">
-                <h2>設定</h2>
+        <!-- APIキー設定ダイアログ -->
+        <md-dialog id="apiModal">
+            <div slot="headline">設定</div>
 
+            <div slot="content">
                 <div class="setting-group">
-                    <label>APIキー</label>
-                    <p class="setting-desc">Google AI StudioのAPIキーを入力してください</p>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="api-link">APIキーを取得 →</a>
-                    <input type="password" id="apiKeyInput" placeholder="APIキーを入力">
+                    <label class="md-label-large">APIキー</label>
+                    <p class="md-body-small setting-desc">Google AI StudioのAPIキーを入力してください</p>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="md-link">
+                        <md-icon>open_in_new</md-icon>
+                        APIキーを取得
+                    </a>
+                    <md-outlined-text-field
+                        id="apiKeyInput"
+                        type="password"
+                        label="APIキー"
+                        supporting-text="Gemini API キーを入力してください"
+                        style="width: 100%;">
+                    </md-outlined-text-field>
                 </div>
 
                 <div class="setting-group">
-                    <label>アスペクト比</label>
-                    <p class="setting-desc">生成する画像の縦横比を選択</p>
+                    <label class="md-label-large">アスペクト比</label>
+                    <p class="md-body-small setting-desc">生成する画像の縦横比を選択</p>
                     <div class="aspect-options">
                         <label class="aspect-option">
-                            <input type="radio" name="aspectRatio" value="1:1">
+                            <md-radio name="aspectRatio" value="1:1"></md-radio>
                             <span class="aspect-box">
                                 <span class="aspect-icon square"></span>
-                                <span class="aspect-label">1:1</span>
-                                <span class="aspect-desc">正方形</span>
+                                <div class="aspect-text">
+                                    <span class="aspect-label">1:1</span>
+                                    <span class="aspect-desc">正方形</span>
+                                </div>
                             </span>
                         </label>
                         <label class="aspect-option">
-                            <input type="radio" name="aspectRatio" value="4:5">
+                            <md-radio name="aspectRatio" value="4:5" checked></md-radio>
                             <span class="aspect-box">
                                 <span class="aspect-icon portrait"></span>
-                                <span class="aspect-label">4:5</span>
-                                <span class="aspect-desc">縦長（推奨）</span>
+                                <div class="aspect-text">
+                                    <span class="aspect-label">4:5</span>
+                                    <span class="aspect-desc">縦長（推奨）</span>
+                                </div>
                             </span>
                         </label>
                     </div>
                 </div>
-
-                <div class="modal-buttons">
-                    <button id="saveApiKey" class="btn btn-primary">保存</button>
-                    <button id="closeModal" class="btn btn-secondary">キャンセル</button>
-                </div>
             </div>
-        </div>
+
+            <div slot="actions">
+                <md-text-button id="closeModal">キャンセル</md-text-button>
+                <md-filled-button id="saveApiKey">保存</md-filled-button>
+            </div>
+        </md-dialog>
 
         <!-- ローディングオーバーレイ -->
         <div id="loadingOverlay" class="loading-overlay hidden">
             <div class="loading-content">
-                <div class="spinner"></div>
-                <p id="loadingMessage">処理中...</p>
-                <div class="progress-bar">
-                    <div id="progressFill" class="progress-fill"></div>
-                </div>
-                <p id="progressText"></p>
+                <md-circular-progress indeterminate></md-circular-progress>
+                <p id="loadingMessage" class="md-body-large">処理中...</p>
+                <md-linear-progress id="progressBar" class="progress-bar"></md-linear-progress>
+                <p id="progressText" class="md-body-small"></p>
             </div>
         </div>
 
         <!-- STEP 1: 投文案入力 -->
-        <section id="step1" class="step">
+        <section id="step1" class="step md-card">
             <div class="step-header">
-                <span class="step-number">STEP 1</span>
-                <h2>投稿案を入力</h2>
+                <div class="step-badge">
+                    <md-icon>edit_note</md-icon>
+                    <span>STEP 1</span>
+                </div>
+                <h2 class="md-headline-small">投稿案を入力</h2>
             </div>
             <div class="step-content">
-                <div class="input-guide">
-                    <p>LINE投稿案のテキストをコピペしてください。</p>
-                    <p class="hint">※ 「■ 1枚目」「■ 2枚目」の形式でカルーセル構造を検出します</p>
+                <div class="input-guide md-surface-variant">
+                    <p class="md-body-medium">LINE投稿案のテキストをコピペしてください。</p>
+                    <p class="md-body-small hint">「■ 1枚目」「■ 2枚目」の形式でカルーセル構造を検出します</p>
                 </div>
-                <textarea id="inputText" placeholder="ここに投稿案をコピペしてください...
-
-例：
-■ 1枚目（表紙）
-毎朝、窓がビショビショ…
-放っておくとヤバいです
-
-■ 2枚目
-対策①
-朝イチでサッと拭き取る
-100均のワイパーが手軽でおすすめ♪
-
-■ 3枚目
-対策②
-..."></textarea>
+                <md-outlined-text-field
+                    id="inputText"
+                    type="textarea"
+                    label="投稿案を入力"
+                    rows="12"
+                    style="width: 100%;"
+                    supporting-text="カルーセル形式で入力してください">
+                </md-outlined-text-field>
                 <div class="input-actions">
-                    <span id="charCount">0文字</span>
-                    <button id="generateBtn" class="btn btn-primary btn-large">🎨 デザイン案を生成</button>
+                    <span id="charCount" class="md-body-small">0文字</span>
+                    <md-filled-button id="generateBtn">
+                        <md-icon slot="icon">auto_awesome</md-icon>
+                        デザイン案を生成
+                    </md-filled-button>
                 </div>
-                <div id="parsePreview" class="parse-preview hidden">
-                    <h3>構造プレビュー</h3>
-                    <div id="slideCount"></div>
-                    <div id="slideStructure"></div>
+                <div id="parsePreview" class="parse-preview hidden md-surface-variant">
+                    <h3 class="md-title-medium">構造プレビュー</h3>
+                    <div id="slideCount" class="md-label-large"></div>
+                    <div id="slideStructure" class="md-body-small"></div>
                 </div>
             </div>
         </section>
 
         <!-- STEP 2: デザイン案選択 -->
-        <section id="step2" class="step hidden">
+        <section id="step2" class="step hidden md-card">
             <div class="step-header">
-                <span class="step-number">STEP 2</span>
-                <h2>デザイン案を選択</h2>
+                <div class="step-badge">
+                    <md-icon>palette</md-icon>
+                    <span>STEP 2</span>
+                </div>
+                <h2 class="md-headline-small">デザイン案を選択</h2>
             </div>
             <div class="step-content">
                 <div class="design-options">
-                    <div class="design-option" data-option="A">
-                        <div class="option-label">案 A</div>
-                        <div class="option-desc">シンプル</div>
+                    <div class="design-option md-card" data-option="A">
+                        <div class="option-label md-label-large">案 A</div>
+                        <div class="option-desc md-body-small">シンプル</div>
                         <div class="option-preview" id="previewA">
-                            <div class="placeholder">生成中...</div>
+                            <div class="placeholder">
+                                <md-circular-progress indeterminate></md-circular-progress>
+                            </div>
                         </div>
-                        <button class="btn btn-select" data-option="A">この案を選択</button>
+                        <md-filled-button class="btn-select" data-option="A">この案を選択</md-filled-button>
                     </div>
-                    <div class="design-option" data-option="B">
-                        <div class="option-label">案 B</div>
-                        <div class="option-desc">鉛筆イラスト</div>
+                    <div class="design-option md-card" data-option="B">
+                        <div class="option-label md-label-large">案 B</div>
+                        <div class="option-desc md-body-small">鉛筆イラスト</div>
                         <div class="option-preview" id="previewB">
-                            <div class="placeholder">生成中...</div>
+                            <div class="placeholder">
+                                <md-circular-progress indeterminate></md-circular-progress>
+                            </div>
                         </div>
-                        <button class="btn btn-select" data-option="B">この案を選択</button>
+                        <md-filled-button class="btn-select" data-option="B">この案を選択</md-filled-button>
                     </div>
-                    <div class="design-option" data-option="C">
-                        <div class="option-label">案 C</div>
-                        <div class="option-desc">親しみやすいイラスト</div>
+                    <div class="design-option md-card" data-option="C">
+                        <div class="option-label md-label-large">案 C</div>
+                        <div class="option-desc md-body-small">親しみやすいイラスト</div>
                         <div class="option-preview" id="previewC">
-                            <div class="placeholder">生成中...</div>
+                            <div class="placeholder">
+                                <md-circular-progress indeterminate></md-circular-progress>
+                            </div>
                         </div>
-                        <button class="btn btn-select" data-option="C">この案を選択</button>
+                        <md-filled-button class="btn-select" data-option="C">この案を選択</md-filled-button>
                     </div>
-                    <div class="design-option" data-option="D">
-                        <div class="option-label">案 D</div>
-                        <div class="option-desc">マーカーイラスト</div>
+                    <div class="design-option md-card" data-option="D">
+                        <div class="option-label md-label-large">案 D</div>
+                        <div class="option-desc md-body-small">マーカーイラスト</div>
                         <div class="option-preview" id="previewD">
-                            <div class="placeholder">生成中...</div>
+                            <div class="placeholder">
+                                <md-circular-progress indeterminate></md-circular-progress>
+                            </div>
                         </div>
-                        <button class="btn btn-select" data-option="D">この案を選択</button>
+                        <md-filled-button class="btn-select" data-option="D">この案を選択</md-filled-button>
                     </div>
-                    <div class="design-option" data-option="E">
-                        <div class="option-label">案 E</div>
-                        <div class="option-desc">手書き風ペン</div>
+                    <div class="design-option md-card" data-option="E">
+                        <div class="option-label md-label-large">案 E</div>
+                        <div class="option-desc md-body-small">手書き風ペン</div>
                         <div class="option-preview" id="previewE">
-                            <div class="placeholder">生成中...</div>
+                            <div class="placeholder">
+                                <md-circular-progress indeterminate></md-circular-progress>
+                            </div>
                         </div>
-                        <button class="btn btn-select" data-option="E">この案を選択</button>
+                        <md-filled-button class="btn-select" data-option="E">この案を選択</md-filled-button>
                     </div>
                 </div>
                 <div class="revision-section">
-                    <h3>修正指示（オプション）</h3>
-                    <textarea id="revisionInput" placeholder="例：もう少しポップに / 文字を大きく / 背景を青系に"></textarea>
-                    <button id="regenerateBtn" class="btn btn-secondary">🔄 デザイン案を再生成</button>
+                    <h3 class="md-title-medium">修正指示（オプション）</h3>
+                    <md-outlined-text-field
+                        id="revisionInput"
+                        type="textarea"
+                        label="修正指示"
+                        rows="2"
+                        style="width: 100%;"
+                        supporting-text="例：もう少しポップに / 文字を大きく / 背景を青系に">
+                    </md-outlined-text-field>
+                    <md-outlined-button id="regenerateBtn">
+                        <md-icon slot="icon">refresh</md-icon>
+                        デザイン案を再生成
+                    </md-outlined-button>
                 </div>
                 <div class="step-actions">
-                    <button id="backToStep1" class="btn btn-secondary">← 戻る</button>
+                    <md-outlined-button id="backToStep1">
+                        <md-icon slot="icon">arrow_back</md-icon>
+                        戻る
+                    </md-outlined-button>
                 </div>
             </div>
         </section>
 
         <!-- STEP 3: 全スライド生成 -->
-        <section id="step3" class="step hidden">
+        <section id="step3" class="step hidden md-card">
             <div class="step-header">
-                <span class="step-number">STEP 3</span>
-                <h2>全スライド生成</h2>
+                <div class="step-badge">
+                    <md-icon>collections</md-icon>
+                    <span>STEP 3</span>
+                </div>
+                <h2 class="md-headline-small">全スライド生成</h2>
             </div>
             <div class="step-content">
                 <div class="generation-progress">
-                    <p id="generationStatus">準備中...</p>
-                    <div class="progress-bar large">
-                        <div id="generationProgress" class="progress-fill"></div>
-                    </div>
+                    <p id="generationStatus" class="md-body-large">準備中...</p>
+                    <md-linear-progress id="generationProgress" class="progress-bar-large"></md-linear-progress>
                 </div>
                 <div id="slidesContainer" class="slides-container">
                     <!-- 動的に生成されるスライド -->
                 </div>
                 <div class="download-section">
-                    <button id="downloadZip" class="btn btn-primary btn-large" disabled>
-                        📥 一括ダウンロード（ZIP）
-                    </button>
+                    <md-filled-button id="downloadZip" disabled>
+                        <md-icon slot="icon">download</md-icon>
+                        一括ダウンロード（ZIP）
+                    </md-filled-button>
                 </div>
                 <div class="step-actions">
-                    <button id="backToStep2" class="btn btn-secondary">← デザイン選択に戻る</button>
-                    <button id="startOver" class="btn btn-secondary">最初からやり直す</button>
+                    <md-outlined-button id="backToStep2">
+                        <md-icon slot="icon">arrow_back</md-icon>
+                        デザイン選択に戻る
+                    </md-outlined-button>
+                    <md-text-button id="startOver">
+                        最初からやり直す
+                    </md-text-button>
                 </div>
             </div>
         </section>
 
-        <!-- エラー表示 -->
-        <div id="errorContainer" class="error-container hidden">
-            <div class="error-content">
-                <span class="error-icon">⚠️</span>
-                <p id="errorMessage"></p>
-                <button id="retryBtn" class="btn btn-primary hidden">再試行</button>
-                <button id="dismissError" class="btn btn-secondary">閉じる</button>
+        <!-- スナックバー（エラー/成功） -->
+        <div id="snackbar" class="snackbar hidden">
+            <div class="snackbar-content">
+                <md-icon id="snackbarIcon"></md-icon>
+                <span id="snackbarMessage"></span>
             </div>
-        </div>
-
-        <!-- 成功メッセージ -->
-        <div id="successContainer" class="success-container hidden">
-            <div class="success-content">
-                <span class="success-icon">✅</span>
-                <p id="successMessage"></p>
-            </div>
+            <md-text-button id="snackbarAction" class="hidden">再試行</md-text-button>
         </div>
     </div>
 
-    <footer>
-        <p>Powered by Gemini AI | 住まいるでんき館きょうしん</p>
+    <footer class="md-footer">
+        <p class="md-body-small">Powered by Gemini AI | 住まいるでんき館きょうしん</p>
     </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
