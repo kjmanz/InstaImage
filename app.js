@@ -458,6 +458,20 @@ function showStep(stepNum) {
     if (stepNum === 2) elements.step2.classList.remove('hidden');
     if (stepNum === 3) elements.step3.classList.remove('hidden');
 
+    // ステッパーインジケーター更新
+    const stepperSteps = document.querySelectorAll('.stepper-step');
+    const stepperConnectors = document.querySelectorAll('.stepper-connector');
+    stepperSteps.forEach(s => {
+        const step = parseInt(s.dataset.step);
+        s.classList.remove('active', 'completed');
+        if (step === stepNum) s.classList.add('active');
+        else if (step < stepNum) s.classList.add('completed');
+    });
+    stepperConnectors.forEach(c => {
+        const connNum = parseInt(c.dataset.connector);
+        c.classList.toggle('completed', connNum < stepNum);
+    });
+
     // スクロールをトップに
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }

@@ -40,6 +40,8 @@
 <body>
     <div class="container">
         <header class="md-header">
+            <div class="header-decor"></div>
+            <div class="header-decor"></div>
             <div class="header-content">
                 <div class="header-branding">
                     <div class="header-icon">
@@ -57,6 +59,24 @@
                 </div>
             </div>
         </header>
+
+        <!-- ステッパーインジケーター -->
+        <div class="stepper-indicator" id="stepperIndicator">
+            <div class="stepper-step active" data-step="1">
+                <div class="stepper-dot">1</div>
+                <span class="stepper-label">入力</span>
+            </div>
+            <div class="stepper-connector" data-connector="1"></div>
+            <div class="stepper-step" data-step="2">
+                <div class="stepper-dot">2</div>
+                <span class="stepper-label">デザイン選択</span>
+            </div>
+            <div class="stepper-connector" data-connector="2"></div>
+            <div class="stepper-step" data-step="3">
+                <div class="stepper-dot">3</div>
+                <span class="stepper-label">生成</span>
+            </div>
+        </div>
 
         <!-- APIキー設定ダイアログ -->
         <md-dialog id="apiModal">
