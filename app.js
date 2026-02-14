@@ -43,6 +43,7 @@ const DESIGN_VARIATIONS = {
 let state = {
     apiKey: null,
     aspectRatio: DEFAULT_ASPECT_RATIO,
+    enabledVariations: ['A', 'B', 'C', 'D', 'E'],
     parsedSlides: null,
     slideData: null,
     designOptions: { A: null, B: null, C: null, D: null, E: null },
@@ -135,6 +136,10 @@ function setupEventListeners() {
         if (aspectRadio) {
             aspectRadio.checked = true;
         }
+        // 現在のデザインバリエーション設定を復元
+        document.querySelectorAll('input[name="designVariation"]').forEach(cb => {
+            cb.checked = state.enabledVariations.includes(cb.value);
+        });
         elements.apiModal.classList.remove('hidden');
     });
     elements.saveApiKey.addEventListener('click', saveApiKey);
@@ -198,6 +203,14 @@ function setupEventListeners() {
 function loadApiKey() {
     state.apiKey = localStorage.getItem('gemini_api_key');
     state.aspectRatio = localStorage.getItem('aspect_ratio') || DEFAULT_ASPECT_RATIO;
+    const savedVariations = localStorage.getItem('enabled_variations');
+    if (savedVariations) {
+        try {
+            state.enabledVariations = JSON.parse(savedVariations);
+        } catch (e) {
+            state.enabledVariations = ['A', 'B', 'C', 'D', 'E'];
+        }
+    }
     if (!state.apiKey) {
         elements.apiModal.classList.remove('hidden');
     }
@@ -219,6 +232,16 @@ function saveApiKey() {
     }
 
     localStorage.setItem('gemini_api_key', key);
+
+    // デザインバリエーションを保存
+    const checkedVariations = Array.from(document.querySelectorAll('input[name="designVariation"]:checked')).map(cb => cb.value);
+    if (checkedVariations.length === 0) {
+        showError('デザイン案を最侎1つ選択してください');
+        return;
+    }
+    state.enabledVariations = checkedVariations;
+    localStorage.setItem('enabled_variations', JSON.stringify(checkedVariations));
+
     elements.apiModal.classList.add('hidden');
     showSuccess('設定を保存しました');
 }
@@ -592,24 +615,43 @@ async function generateDesignOptions() {
     const revision = elements.revisionInput.value.trim();
     state.currentRevision = revision;
 
-    const options = ['A', 'B', 'C', 'D', 'E'];
-    const previews = [elements.previewA, elements.previewB, elements.previewC, elements.previewD, elements.previewE];
+    const allOptions = ['A', 'B', 'C', 'D', 'E'];
+    const allPreviews = {
+        A: elements.previewA,
+        B: elements.previewB,
+        C: elements.previewC,
+        D: elements.previewD,
+        E: elements.previewE
+    };
 
-    previews.forEach(p => {
-        p.innerHTML = '<div class="placeholder generating">生成中...</div>';
+    // 有効なバリエーションのみ表示・生成
+    allOptions.forEach(opt => {
+        const card = document.querySelector(`.design-option[data-option="${opt}"]`);
+        if (state.enabledVariations.includes(opt)) {
+            card.style.display = '';
+            allPreviews[opt].innerHTML = '<div class="placeholder generating">生成中...</div>';
+        } else {
+            card.style.display = 'none';
+            state.designOptions[opt] = null;
+        }
     });
+
+    // グリッド列数を有効なバリエーション数に合わせて調整
+    const designGrid = document.querySelector('.design-options');
+    const count = state.enabledVariations.length;
+    designGrid.style.gridTemplateColumns = `repeat(${Math.min(count, 5)}, 1fr)`;
 
     // 参考画像がある場合、最初の画像（最大1枚）をリファレンスとして渡す
     const refImage = state.referenceImages.length > 0 ? state.referenceImages[0] : null;
 
-    await Promise.all(options.map(async (opt, i) => {
+    await Promise.all(state.enabledVariations.map(async (opt) => {
         try {
             const prompt = createDesignPrompt(firstSlide, opt, revision);
             const imageData = await generateImage(prompt, refImage ? refImage.base64 : null);
             state.designOptions[opt] = imageData;
-            displayImage(previews[i], imageData);
+            displayImage(allPreviews[opt], imageData);
         } catch (error) {
-            previews[i].innerHTML = `<div class="placeholder">生成エラー</div>`;
+            allPreviews[opt].innerHTML = `<div class="placeholder">生成エラー</div>`;
             console.error(`デザイン${opt}生成エラー:`, error);
         }
     }));
