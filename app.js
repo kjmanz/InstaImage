@@ -49,7 +49,8 @@ let state = {
     selectedDesign: null,
     generatedSlides: [],
     currentRevision: '',
-    isGenerating: false
+    isGenerating: false,
+    referenceImages: [] // { base64, mimeType, name }
 };
 
 // ===== DOM要素 =====
@@ -117,6 +118,11 @@ function initElements() {
     elements.lightbox = document.getElementById('lightbox');
     elements.lightboxImg = document.getElementById('lightboxImg');
     elements.lightboxClose = document.getElementById('lightboxClose');
+
+    // 参考画像アップロード
+    elements.refDropZone = document.getElementById('refDropZone');
+    elements.refFileInput = document.getElementById('refFileInput');
+    elements.refPreviewContainer = document.getElementById('refPreviewContainer');
 }
 
 function setupEventListeners() {
@@ -167,6 +173,22 @@ function setupEventListeners() {
     });
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeLightbox();
+    });
+
+    // 参考画像アップロード
+    elements.refDropZone.addEventListener('click', () => elements.refFileInput.click());
+    elements.refFileInput.addEventListener('change', (e) => handleRefFiles(e.target.files));
+    elements.refDropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        elements.refDropZone.classList.add('drag-over');
+    });
+    elements.refDropZone.addEventListener('dragleave', () => {
+        elements.refDropZone.classList.remove('drag-over');
+    });
+    elements.refDropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        elements.refDropZone.classList.remove('drag-over');
+        handleRefFiles(e.dataTransfer.files);
     });
 }
 
@@ -389,9 +411,13 @@ function createDesignPrompt(slide, variationKey, revision = '') {
             : '情報整理されたコンテンツスライド。番号と見出しを明確に。';
 
     const aspectText = state.aspectRatio === '1:1' ? '正方形（1:1）' : '縦長（4:5）';
+    const hasRef = state.referenceImages.length > 0;
+    const refNote = hasRef
+        ? '\n【参考デザイン】\n添付した参考画像のデザインテイスト（色使い、レイアウト、雰囲気、フォント感）を参考にしてください。ただし内容はコピーせず、以下のスライド情報に基づいて新しい画像を作成してください。'
+        : '';
 
     return `以下の条件でInstagramカルーセル投稿の${slide.number}枚目の画像を生成してください。
-
+${refNote}
 【基本仕様】
 - ${aspectText}のInstagram投稿画像
 - ターゲット：50代以上がスマホで見やすいデザイン
@@ -571,10 +597,13 @@ async function generateDesignOptions() {
         p.innerHTML = '<div class="placeholder generating">生成中...</div>';
     });
 
+    // 参考画像がある場合、最初の画像（最大1枚）をリファレンスとして渡す
+    const refImage = state.referenceImages.length > 0 ? state.referenceImages[0] : null;
+
     await Promise.all(options.map(async (opt, i) => {
         try {
             const prompt = createDesignPrompt(firstSlide, opt, revision);
-            const imageData = await generateImage(prompt);
+            const imageData = await generateImage(prompt, refImage ? refImage.base64 : null);
             state.designOptions[opt] = imageData;
             displayImage(previews[i], imageData);
         } catch (error) {
@@ -785,7 +814,8 @@ function resetAll() {
         selectedDesign: null,
         generatedSlides: [],
         currentRevision: '',
-        isGenerating: false
+        isGenerating: false,
+        referenceImages: []
     };
 
     elements.inputText.value = '';
@@ -794,6 +824,8 @@ function resetAll() {
     elements.revisionInput.value = '';
     elements.slidesContainer.innerHTML = '';
     elements.downloadZip.disabled = true;
+    elements.refPreviewContainer.innerHTML = '';
+    elements.refFileInput.value = '';
 
     ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
         const preview = document.getElementById(`preview${opt}`);
@@ -805,6 +837,62 @@ function resetAll() {
     });
 
     showStep(1);
+}
+
+// ===== 参考画像処理 =====
+async function handleRefFiles(files) {
+    const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    for (const file of imageFiles) {
+        try {
+            const result = await readFileAsBase64(file);
+            state.referenceImages.push({
+                base64: result.base64,
+                mimeType: file.type,
+                name: file.name
+            });
+            renderRefPreviews();
+        } catch (error) {
+            console.error('参考画像の読み込みエラー:', error);
+        }
+    }
+    // ファイル入力をリセット（同じファイルを再選択可能に）
+    elements.refFileInput.value = '';
+}
+
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result;
+            // 「data:image/png;base64,」の部分を除去
+            const base64 = dataUrl.split(',')[1];
+            resolve({ base64, dataUrl });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderRefPreviews() {
+    elements.refPreviewContainer.innerHTML = '';
+    state.referenceImages.forEach((img, index) => {
+        const item = document.createElement('div');
+        item.className = 'ref-preview-item';
+        item.innerHTML = `
+            <img src="data:${img.mimeType};base64,${img.base64}" alt="${img.name}">
+            <button class="ref-preview-remove" title="削除">&times;</button>
+        `;
+        item.querySelector('.ref-preview-remove').addEventListener('click', () => {
+            state.referenceImages.splice(index, 1);
+            renderRefPreviews();
+        });
+        item.querySelector('img').addEventListener('click', () => {
+            openLightbox(`data:${img.mimeType};base64,${img.base64}`);
+        });
+        elements.refPreviewContainer.appendChild(item);
+    });
 }
 
 // ===== ユーティリティ =====

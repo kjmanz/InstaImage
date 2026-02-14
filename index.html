@@ -105,6 +105,20 @@
                     <div id="slideCount"></div>
                     <div id="slideStructure"></div>
                 </div>
+
+                <!-- 参考画像アップロード -->
+                <div class="reference-section">
+                    <h3>📎 参考デザイン（オプション）</h3>
+                    <p class="hint">過去の投稿画像をアップロードすると、そのデザインテイストを参考に生成します</p>
+                    <div id="refDropZone" class="ref-drop-zone">
+                        <div class="ref-drop-content">
+                            <span class="ref-drop-icon">🖼️</span>
+                            <p>画像をドラッグ＆ドロップ<br>または<span class="ref-browse">クリックして選択</span></p>
+                        </div>
+                        <input type="file" id="refFileInput" accept="image/*" multiple hidden>
+                    </div>
+                    <div id="refPreviewContainer" class="ref-preview-container"></div>
+                </div>
             </div>
         </section>
 
