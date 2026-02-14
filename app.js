@@ -18,16 +18,24 @@ const DEFAULT_ASPECT_RATIO = '4:5'; // デフォルトは縦長
 
 const DESIGN_VARIATIONS = {
     A: {
-        name: 'シンプル＆クリーン',
-        style: '白背景に大きな文字で見やすいシンプルなデザイン。ミニマルで清潔感のあるレイアウト。'
+        name: 'シンプル',
+        style: '白背景に大きな文字で見やすいシンプルなデザイン。余白を活かしたミニマルで清潔感のあるレイアウト。'
     },
     B: {
-        name: 'パステル＆イラスト',
-        style: 'やわらかいパステルカラー背景。可愛らしいイラストアイコン付き。親しみやすい雰囲気。'
+        name: '鉛筆イラスト',
+        style: '鉛筆で書いたような手描き風イラストデザイン。温かみのある線画と、少し粗いテクスチャで親しみやすい雰囲気。'
     },
     C: {
-        name: '写真風オーバーレイ',
-        style: '写真風の背景に白文字オーバーレイ。モダンでインパクトのあるデザイン。'
+        name: '親しみやすいイラスト',
+        style: '可愛らしいイラストアイコン付き。やわらかいパステルカラー背景で、誰にでも好かれる親しみやすいデザイン。'
+    },
+    D: {
+        name: 'マーカーイラスト',
+        style: 'カラフルなマーカーで描いたようなイラストデザイン。太い線と鮮やかな色使いで、元気でポップな印象。'
+    },
+    E: {
+        name: '手書き風ペン',
+        style: 'ラフなペンで手書き風に描いたデザイン。少し崩した文字と自由な線で、アットホームで温かい雰囲気。'
     }
 };
 
@@ -37,7 +45,7 @@ let state = {
     aspectRatio: DEFAULT_ASPECT_RATIO,
     parsedSlides: null,
     slideData: null,
-    designOptions: { A: null, B: null, C: null },
+    designOptions: { A: null, B: null, C: null, D: null, E: null },
     selectedDesign: null,
     generatedSlides: [],
     currentRevision: '',
@@ -82,6 +90,8 @@ function initElements() {
     elements.previewA = document.getElementById('previewA');
     elements.previewB = document.getElementById('previewB');
     elements.previewC = document.getElementById('previewC');
+    elements.previewD = document.getElementById('previewD');
+    elements.previewE = document.getElementById('previewE');
     elements.revisionInput = document.getElementById('revisionInput');
     elements.regenerateBtn = document.getElementById('regenerateBtn');
     elements.backToStep1 = document.getElementById('backToStep1');
@@ -525,8 +535,8 @@ async function generateDesignOptions() {
     const revision = elements.revisionInput.value.trim();
     state.currentRevision = revision;
 
-    const options = ['A', 'B', 'C'];
-    const previews = [elements.previewA, elements.previewB, elements.previewC];
+    const options = ['A', 'B', 'C', 'D', 'E'];
+    const previews = [elements.previewA, elements.previewB, elements.previewC, elements.previewD, elements.previewE];
 
     previews.forEach(p => {
         p.innerHTML = '<div class="placeholder generating">生成中...</div>';
@@ -742,7 +752,7 @@ function resetAll() {
         aspectRatio: state.aspectRatio,
         parsedSlides: null,
         slideData: null,
-        designOptions: { A: null, B: null, C: null },
+        designOptions: { A: null, B: null, C: null, D: null, E: null },
         selectedDesign: null,
         generatedSlides: [],
         currentRevision: '',
@@ -756,7 +766,7 @@ function resetAll() {
     elements.slidesContainer.innerHTML = '';
     elements.downloadZip.disabled = true;
 
-    ['A', 'B', 'C'].forEach(opt => {
+    ['A', 'B', 'C', 'D', 'E'].forEach(opt => {
         const preview = document.getElementById(`preview${opt}`);
         preview.innerHTML = '<div class="placeholder">生成中...</div>';
     });
