@@ -188,6 +188,8 @@ header .subtitle {
     box-shadow: var(--shadow-lg);
     max-width: 440px;
     width: 90%;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
     text-align: center;
     animation: modalSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
