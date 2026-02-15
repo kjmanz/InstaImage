@@ -469,8 +469,8 @@ async function createBatchJob(requestItems) {
         },
         body: JSON.stringify({
             batch: {
-                displayName: `insta-gen-${Date.now()}`,
-                inputConfig: {
+                display_name: `insta-gen-${Date.now()}`,
+                input_config: {
                     requests: {
                         requests: batchRequests
                     }
@@ -511,16 +511,21 @@ async function pollBatchJob(batchName, onProgress = null) {
 
         const job = await response.json();
         const elapsedSec = Math.round(elapsed / 1000);
+        const jobState = job.metadata?.state || job.state;
 
         if (onProgress) {
-            onProgress(job.state, elapsedSec);
+            onProgress(jobState, elapsedSec);
         }
 
-        if (job.state === 'JOB_STATE_SUCCEEDED') {
+        // doneフラグまたはstateで完了判定
+        if (job.done || jobState === 'JOB_STATE_SUCCEEDED') {
+            if (job.error) {
+                throw new Error(`Batchジョブエラー: ${job.error.message || JSON.stringify(job.error)}`);
+            }
             return job;
-        } else if (job.state === 'JOB_STATE_FAILED') {
+        } else if (jobState === 'JOB_STATE_FAILED') {
             throw new Error('Batchジョブが失敗しました');
-        } else if (job.state === 'JOB_STATE_CANCELLED') {
+        } else if (jobState === 'JOB_STATE_CANCELLED') {
             throw new Error('Batchジョブがキャンセルされました');
         }
 
@@ -530,7 +535,15 @@ async function pollBatchJob(batchName, onProgress = null) {
 }
 
 function extractBatchImages(job) {
-    const responses = job.dest?.inlinedResponses?.responses || [];
+    // REST APIでは job.response.inlinedResponses にレスポンスが入る
+    // フォールバック: job.dest?.inlinedResponses?.responses も試す
+    const inlined = job.response?.inlinedResponses
+        || job.response?.inlined_responses
+        || job.dest?.inlinedResponses?.responses
+        || job.dest?.inlined_responses?.responses
+        || [];
+    // inlinedがオブジェクトの場合、中のresponses配列を取得
+    const responses = Array.isArray(inlined) ? inlined : (inlined.responses || inlined || []);
     const images = [];
 
     for (const item of responses) {
@@ -538,8 +551,8 @@ function extractBatchImages(job) {
         let imageData = null;
         for (const part of parts) {
             if (part.thought) continue;
-            if (part.inlineData) {
-                imageData = part.inlineData.data;
+            if (part.inlineData || part.inline_data) {
+                imageData = (part.inlineData || part.inline_data).data;
                 break;
             }
         }
