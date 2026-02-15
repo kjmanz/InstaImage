@@ -349,6 +349,59 @@ header .subtitle {
     color: var(--primary-color);
 }
 
+/* Generation Mode Options */
+.mode-options {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.mode-option {
+    cursor: pointer;
+    flex: 1;
+}
+
+.mode-option input {
+    display: none;
+}
+
+.mode-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 24px;
+    border: 2px solid var(--card-border);
+    border-radius: var(--radius);
+    transition: var(--transition);
+    background: var(--bg-glass);
+}
+
+.mode-option input:checked+.mode-box {
+    border-color: var(--primary-color);
+    background: var(--primary-light);
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.2);
+}
+
+.mode-icon {
+    font-size: 1.5rem;
+    margin-bottom: 6px;
+}
+
+.mode-label {
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+.mode-option input:checked+.mode-box .mode-label {
+    color: var(--primary-color);
+}
+
+.mode-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
 /* Variation (Design Type) Options */
 .variation-options {
     display: flex;

@@ -52,6 +52,29 @@
                 </div>
 
                 <div class="setting-group">
+                    <label>生成モード</label>
+                    <p class="setting-desc">Batchモードは時間がかかりますがAPI料金が50%オフになります</p>
+                    <div class="mode-options">
+                        <label class="mode-option">
+                            <input type="radio" name="generationMode" value="normal" checked>
+                            <span class="mode-box">
+                                <span class="mode-icon">&#9889;</span>
+                                <span class="mode-label">通常</span>
+                                <span class="mode-desc">即時生成</span>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="generationMode" value="batch">
+                            <span class="mode-box">
+                                <span class="mode-icon">&#128176;</span>
+                                <span class="mode-label">Batch</span>
+                                <span class="mode-desc">50%オフ</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-group">
                     <label>生成するデザイン案</label>
                     <p class="setting-desc">生成するデザインバリエーションを選択（最低1つ）</p>
                     <div class="variation-options">

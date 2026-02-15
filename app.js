@@ -43,6 +43,7 @@ const DESIGN_VARIATIONS = {
 let state = {
     apiKey: null,
     aspectRatio: DEFAULT_ASPECT_RATIO,
+    generationMode: 'normal', // 'normal' or 'batch'
     enabledVariations: ['A', 'B', 'C', 'D', 'E'],
     parsedSlides: null,
     slideData: null,
@@ -136,6 +137,11 @@ function setupEventListeners() {
         if (aspectRadio) {
             aspectRadio.checked = true;
         }
+        // 現在の生成モードを選択
+        const modeRadio = document.querySelector(`input[name="generationMode"][value="${state.generationMode}"]`);
+        if (modeRadio) {
+            modeRadio.checked = true;
+        }
         // 現在のデザインバリエーション設定を復元
         document.querySelectorAll('input[name="designVariation"]').forEach(cb => {
             cb.checked = state.enabledVariations.includes(cb.value);
@@ -203,6 +209,7 @@ function setupEventListeners() {
 function loadApiKey() {
     state.apiKey = localStorage.getItem('gemini_api_key');
     state.aspectRatio = localStorage.getItem('aspect_ratio') || DEFAULT_ASPECT_RATIO;
+    state.generationMode = localStorage.getItem('generation_mode') || 'normal';
     const savedVariations = localStorage.getItem('enabled_variations');
     if (savedVariations) {
         try {
@@ -229,6 +236,13 @@ function saveApiKey() {
     if (selectedAspect) {
         state.aspectRatio = selectedAspect.value;
         localStorage.setItem('aspect_ratio', state.aspectRatio);
+    }
+
+    // 生成モードを保存
+    const selectedMode = document.querySelector('input[name="generationMode"]:checked');
+    if (selectedMode) {
+        state.generationMode = selectedMode.value;
+        localStorage.setItem('generation_mode', state.generationMode);
     }
 
     localStorage.setItem('gemini_api_key', key);
@@ -426,6 +440,153 @@ async function generateImage(prompt, referenceImage = null) {
     throw new Error('画像が生成されませんでした');
 }
 
+// ===== Batch API =====
+async function createBatchJob(requestItems) {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error('APIキーが設定されていません');
+
+    const url = `${CONFIG.API_BASE_URL}/${CONFIG.IMAGE_MODEL}:batchGenerateContent`;
+
+    const batchRequests = requestItems.map((item, i) => ({
+        request: {
+            contents: [{ parts: item.parts }],
+            generationConfig: {
+                responseModalities: ['TEXT', 'IMAGE'],
+                imageConfig: {
+                    aspectRatio: state.aspectRatio,
+                    imageSize: CONFIG.IMAGE_SIZE
+                }
+            }
+        },
+        metadata: { key: `request-${i}` }
+    }));
+
+    const response = await fetchWithRetry(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+            batch: {
+                displayName: `insta-gen-${Date.now()}`,
+                inputConfig: {
+                    requests: {
+                        requests: batchRequests
+                    }
+                }
+            }
+        })
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `Batch API エラー: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.name; // バッチジョブ名
+}
+
+async function pollBatchJob(batchName, onProgress = null) {
+    const apiKey = getApiKey();
+    const url = `https://generativelanguage.googleapis.com/v1beta/${batchName}`;
+    const startTime = Date.now();
+    const POLL_INTERVAL = 5000; // 5秒間隔
+    const MAX_WAIT = 24 * 60 * 60 * 1000; // 24時間
+
+    while (true) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed > MAX_WAIT) {
+            throw new Error('Batchジョブがタイムアウトしました（24時間超過）');
+        }
+
+        const response = await fetch(url, {
+            headers: { 'x-goog-api-key': apiKey }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Batchステータス確認エラー: ${response.status}`);
+        }
+
+        const job = await response.json();
+        const elapsedSec = Math.round(elapsed / 1000);
+
+        if (onProgress) {
+            onProgress(job.state, elapsedSec);
+        }
+
+        if (job.state === 'JOB_STATE_SUCCEEDED') {
+            return job;
+        } else if (job.state === 'JOB_STATE_FAILED') {
+            throw new Error('Batchジョブが失敗しました');
+        } else if (job.state === 'JOB_STATE_CANCELLED') {
+            throw new Error('Batchジョブがキャンセルされました');
+        }
+
+        // JOB_STATE_PENDING or JOB_STATE_RUNNING
+        await sleep(POLL_INTERVAL);
+    }
+}
+
+function extractBatchImages(job) {
+    const responses = job.dest?.inlinedResponses?.responses || [];
+    const images = [];
+
+    for (const item of responses) {
+        const parts = item.response?.candidates?.[0]?.content?.parts || [];
+        let imageData = null;
+        for (const part of parts) {
+            if (part.thought) continue;
+            if (part.inlineData) {
+                imageData = part.inlineData.data;
+                break;
+            }
+        }
+        images.push({
+            key: item.metadata?.key || '',
+            imageData
+        });
+    }
+
+    // メタデータのキーでソート
+    images.sort((a, b) => a.key.localeCompare(b.key));
+    return images;
+}
+
+// Batch APIで単一画像を生成（STEP 3の順次処理用）
+async function generateImageViaBatch(prompt, referenceImage = null, onProgress = null) {
+    const parts = [];
+    if (referenceImage) {
+        parts.push({
+            inlineData: {
+                mimeType: 'image/png',
+                data: referenceImage
+            }
+        });
+    }
+    parts.push({ text: prompt });
+
+    const batchName = await createBatchJob([{ parts }]);
+
+    const job = await pollBatchJob(batchName, onProgress);
+    const images = extractBatchImages(job);
+
+    if (images.length === 0 || !images[0].imageData) {
+        throw new Error('Batch: 画像が生成されませんでした');
+    }
+
+    return images[0].imageData;
+}
+
+// Batch APIで複数画像を一括生成（STEP 2のデザイン案用）
+async function generateImagesBatch(requestItems, onProgress = null) {
+    const batchName = await createBatchJob(requestItems);
+
+    const job = await pollBatchJob(batchName, onProgress);
+    return extractBatchImages(job);
+}
+
 // ===== 画像生成プロンプト作成 =====
 function createDesignPrompt(slide, variationKey, revision = '') {
     const variation = DESIGN_VARIATIONS[variationKey];
@@ -592,7 +753,8 @@ async function startGeneration() {
         state.slideData = await analyzeTextWithGemini(text);
         console.log('解析結果:', state.slideData);
 
-        showLoading('デザイン案を生成中...', 20);
+        const modeLabel = state.generationMode === 'batch' ? '[Batch] ' : '';
+        showLoading(`${modeLabel}デザイン案を生成中...`, 20);
         showStep(2);
 
         await generateDesignOptions();
@@ -644,17 +806,54 @@ async function generateDesignOptions() {
     // 参考画像がある場合、最初の画像（最大1枚）をリファレンスとして渡す
     const refImage = state.referenceImages.length > 0 ? state.referenceImages[0] : null;
 
-    await Promise.all(state.enabledVariations.map(async (opt) => {
-        try {
+    if (state.generationMode === 'batch') {
+        // Batchモード: 全デザイン案を一括送信
+        const requestItems = state.enabledVariations.map(opt => {
             const prompt = createDesignPrompt(firstSlide, opt, revision);
-            const imageData = await generateImage(prompt, refImage ? refImage.base64 : null);
-            state.designOptions[opt] = imageData;
-            displayImage(allPreviews[opt], imageData);
+            const parts = [];
+            if (refImage) {
+                parts.push({
+                    inlineData: { mimeType: 'image/png', data: refImage.base64 }
+                });
+            }
+            parts.push({ text: prompt });
+            return { parts };
+        });
+
+        try {
+            const images = await generateImagesBatch(requestItems, (jobState, elapsedSec) => {
+                showLoading(`Batch処理中... (${elapsedSec}秒経過)`, 50);
+            });
+
+            images.forEach((img, i) => {
+                const opt = state.enabledVariations[i];
+                if (img.imageData) {
+                    state.designOptions[opt] = img.imageData;
+                    displayImage(allPreviews[opt], img.imageData);
+                } else {
+                    allPreviews[opt].innerHTML = `<div class="placeholder">生成エラー</div>`;
+                }
+            });
         } catch (error) {
-            allPreviews[opt].innerHTML = `<div class="placeholder">生成エラー</div>`;
-            console.error(`デザイン${opt}生成エラー:`, error);
+            state.enabledVariations.forEach(opt => {
+                allPreviews[opt].innerHTML = `<div class="placeholder">生成エラー</div>`;
+            });
+            throw error;
         }
-    }));
+    } else {
+        // 通常モード: 並列で個別生成
+        await Promise.all(state.enabledVariations.map(async (opt) => {
+            try {
+                const prompt = createDesignPrompt(firstSlide, opt, revision);
+                const imageData = await generateImage(prompt, refImage ? refImage.base64 : null);
+                state.designOptions[opt] = imageData;
+                displayImage(allPreviews[opt], imageData);
+            } catch (error) {
+                allPreviews[opt].innerHTML = `<div class="placeholder">生成エラー</div>`;
+                console.error(`デザイン${opt}生成エラー:`, error);
+            }
+        }));
+    }
 }
 
 async function regenerateDesigns() {
@@ -703,21 +902,42 @@ async function generateAllSlides() {
 
     try {
         let prevImageBase64 = null;
+        const isBatch = state.generationMode === 'batch';
+
+        // スライド要素を先に全部作成
+        const slideElements = [];
+        for (let i = 0; i < totalSlides; i++) {
+            const slideEl = createSlideElement(i + 1);
+            elements.slidesContainer.appendChild(slideEl);
+            slideElements.push(slideEl);
+        }
 
         for (let i = 0; i < totalSlides; i++) {
             const slide = slides[i];
             const progress = ((i + 1) / totalSlides) * 100;
+            const slideEl = slideElements[i];
 
-            showLoading(`スライド ${i + 1}/${totalSlides} を生成中...`, progress);
-            elements.generationStatus.textContent = `${i + 1}/${totalSlides}枚目を生成中...`;
-            elements.generationProgress.style.width = `${progress}%`;
-
-            const slideEl = createSlideElement(i + 1);
-            elements.slidesContainer.appendChild(slideEl);
+            const prompt = createSlidePrompt(slide, designStyle, prevImageBase64);
 
             try {
-                const prompt = createSlidePrompt(slide, designStyle, prevImageBase64);
-                const imageData = await generateImage(prompt, prevImageBase64);
+                let imageData;
+
+                if (isBatch) {
+                    showLoading(`[Batch] スライド ${i + 1}/${totalSlides} 処理中...`, progress);
+                    elements.generationStatus.textContent = `[Batch] ${i + 1}/${totalSlides}枚目を処理中...`;
+                    elements.generationProgress.style.width = `${progress}%`;
+
+                    imageData = await generateImageViaBatch(prompt, prevImageBase64, (jobState, elapsedSec) => {
+                        showLoading(`[Batch] スライド ${i + 1}/${totalSlides} 処理中... (${elapsedSec}秒)`, progress);
+                        elements.generationStatus.textContent = `[Batch] ${i + 1}/${totalSlides}枚目 処理中 (${elapsedSec}秒)`;
+                    });
+                } else {
+                    showLoading(`スライド ${i + 1}/${totalSlides} を生成中...`, progress);
+                    elements.generationStatus.textContent = `${i + 1}/${totalSlides}枚目を生成中...`;
+                    elements.generationProgress.style.width = `${progress}%`;
+
+                    imageData = await generateImage(prompt, prevImageBase64);
+                }
 
                 state.generatedSlides[i] = imageData;
                 prevImageBase64 = imageData;
@@ -738,7 +958,7 @@ async function generateAllSlides() {
         hideLoading();
         elements.generationStatus.textContent = '生成完了！';
         elements.downloadZip.disabled = false;
-        showSuccess('全スライドの生成が完了しました');
+        showSuccess(isBatch ? '全スライドの生成が完了しました（Batchモード）' : '全スライドの生成が完了しました');
 
     } catch (error) {
         hideLoading();
@@ -852,6 +1072,8 @@ function resetAll() {
     state = {
         apiKey: state.apiKey,
         aspectRatio: state.aspectRatio,
+        generationMode: state.generationMode,
+        enabledVariations: state.enabledVariations,
         parsedSlides: null,
         slideData: null,
         designOptions: { A: null, B: null, C: null, D: null, E: null },
