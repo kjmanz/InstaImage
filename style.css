@@ -402,6 +402,32 @@ header .subtitle {
     color: var(--text-secondary);
 }
 
+/* Batch Notification Toggle */
+.notify-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--bg-glass);
+    cursor: pointer;
+}
+
+.notify-toggle input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--primary-color);
+    flex: 0 0 auto;
+}
+
+.notify-toggle span {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
 /* Variation (Design Type) Options */
 .variation-options {
     display: flex;
@@ -760,6 +786,11 @@ textarea::placeholder {
     padding: 16px 36px;
     font-size: 1.1rem;
     border-radius: var(--radius-lg);
+}
+
+.btn-small {
+    padding: 8px 14px;
+    font-size: 0.85rem;
 }
 
 .btn-select {
@@ -1228,6 +1259,11 @@ textarea::placeholder {
 .success-content p {
     display: inline;
     color: var(--text-primary);
+}
+
+.success-content .btn {
+    display: block;
+    margin-top: 12px;
 }
 
 /* ========================================

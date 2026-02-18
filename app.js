@@ -44,6 +44,7 @@ let state = {
     apiKey: null,
     aspectRatio: DEFAULT_ASPECT_RATIO,
     generationMode: 'normal', // 'normal' or 'batch'
+    notifyOnBatchComplete: true,
     enabledVariations: ['A', 'B', 'C', 'D', 'E'],
     parsedSlides: null,
     slideData: null,
@@ -57,6 +58,8 @@ let state = {
 
 // ===== DOM要素 =====
 const elements = {};
+let successHideTimer = null;
+let successActionHandler = null;
 
 // ===== 初期化 =====
 document.addEventListener('DOMContentLoaded', () => {
@@ -69,6 +72,7 @@ function initElements() {
     // API設定
     elements.apiModal = document.getElementById('apiModal');
     elements.apiKeyInput = document.getElementById('apiKeyInput');
+    elements.batchNotifyEnabled = document.getElementById('batchNotifyEnabled');
     elements.saveApiKey = document.getElementById('saveApiKey');
     elements.closeModal = document.getElementById('closeModal');
     elements.settingsBtn = document.getElementById('settingsBtn');
@@ -115,6 +119,7 @@ function initElements() {
     elements.dismissError = document.getElementById('dismissError');
     elements.successContainer = document.getElementById('successContainer');
     elements.successMessage = document.getElementById('successMessage');
+    elements.successActionBtn = document.getElementById('successActionBtn');
 
     // ライトボックス
     elements.lightbox = document.getElementById('lightbox');
@@ -141,6 +146,9 @@ function setupEventListeners() {
         const modeRadio = document.querySelector(`input[name="generationMode"][value="${state.generationMode}"]`);
         if (modeRadio) {
             modeRadio.checked = true;
+        }
+        if (elements.batchNotifyEnabled) {
+            elements.batchNotifyEnabled.checked = state.notifyOnBatchComplete;
         }
         // 現在のデザインバリエーション設定を復元
         document.querySelectorAll('input[name="designVariation"]').forEach(cb => {
@@ -177,6 +185,15 @@ function setupEventListeners() {
 
     // エラー
     elements.dismissError.addEventListener('click', hideError);
+    if (elements.successActionBtn) {
+        elements.successActionBtn.addEventListener('click', () => {
+            const action = successActionHandler;
+            hideSuccess();
+            if (typeof action === 'function') {
+                action();
+            }
+        });
+    }
 
     // ライトボックス
     elements.lightboxClose.addEventListener('click', closeLightbox);
@@ -210,6 +227,7 @@ function loadApiKey() {
     state.apiKey = localStorage.getItem('gemini_api_key');
     state.aspectRatio = localStorage.getItem('aspect_ratio') || DEFAULT_ASPECT_RATIO;
     state.generationMode = localStorage.getItem('generation_mode') || 'normal';
+    state.notifyOnBatchComplete = localStorage.getItem('batch_notify_enabled') !== 'false';
     const savedVariations = localStorage.getItem('enabled_variations');
     if (savedVariations) {
         try {
@@ -243,6 +261,10 @@ function saveApiKey() {
     if (selectedMode) {
         state.generationMode = selectedMode.value;
         localStorage.setItem('generation_mode', state.generationMode);
+    }
+    if (elements.batchNotifyEnabled) {
+        state.notifyOnBatchComplete = elements.batchNotifyEnabled.checked;
+        localStorage.setItem('batch_notify_enabled', String(state.notifyOnBatchComplete));
     }
 
     localStorage.setItem('gemini_api_key', key);
@@ -488,11 +510,23 @@ async function createBatchJob(requestItems) {
     return data.name; // バッチジョブ名
 }
 
+function getBatchPollIntervalMs(elapsedMs) {
+    const twentyMinutes = 20 * 60 * 1000;
+    const sixtyMinutes = 60 * 60 * 1000;
+
+    if (elapsedMs < twentyMinutes) {
+        return 30 * 1000;
+    }
+    if (elapsedMs < sixtyMinutes) {
+        return 60 * 1000;
+    }
+    return 3 * 60 * 1000;
+}
+
 async function pollBatchJob(batchName, onProgress = null) {
     const apiKey = getApiKey();
     const url = `https://generativelanguage.googleapis.com/v1beta/${batchName}`;
     const startTime = Date.now();
-    const POLL_INTERVAL = 5000; // 5秒間隔
     const MAX_WAIT = 24 * 60 * 60 * 1000; // 24時間
 
     while (true) {
@@ -512,9 +546,10 @@ async function pollBatchJob(batchName, onProgress = null) {
         const job = await response.json();
         const elapsedSec = Math.round(elapsed / 1000);
         const jobState = job.metadata?.state || job.state;
+        const nextPollIntervalMs = getBatchPollIntervalMs(elapsed);
 
         if (onProgress) {
-            onProgress(jobState, elapsedSec);
+            onProgress(jobState, elapsedSec, Math.round(nextPollIntervalMs / 1000));
         }
 
         // doneフラグまたはstateで完了判定
@@ -530,7 +565,7 @@ async function pollBatchJob(batchName, onProgress = null) {
         }
 
         // JOB_STATE_PENDING or JOB_STATE_RUNNING
-        await sleep(POLL_INTERVAL);
+        await sleep(nextPollIntervalMs);
     }
 }
 
@@ -706,12 +741,97 @@ function hideError() {
     elements.errorContainer.classList.add('hidden');
 }
 
-function showSuccess(message) {
+function hideSuccess() {
+    if (successHideTimer) {
+        clearTimeout(successHideTimer);
+        successHideTimer = null;
+    }
+    successActionHandler = null;
+    if (elements.successActionBtn) {
+        elements.successActionBtn.classList.add('hidden');
+        elements.successActionBtn.textContent = '結果を見る';
+    }
+    elements.successContainer.classList.add('hidden');
+}
+
+function showSuccess(message, options = {}) {
+    if (successHideTimer) {
+        clearTimeout(successHideTimer);
+        successHideTimer = null;
+    }
+
+    const { actionLabel = '', onAction = null, autoHideMs = 3000 } = options;
     elements.successMessage.textContent = message;
+
+    if (elements.successActionBtn && actionLabel && typeof onAction === 'function') {
+        successActionHandler = onAction;
+        elements.successActionBtn.textContent = actionLabel;
+        elements.successActionBtn.classList.remove('hidden');
+    } else if (elements.successActionBtn) {
+        successActionHandler = null;
+        elements.successActionBtn.classList.add('hidden');
+    }
+
     elements.successContainer.classList.remove('hidden');
-    setTimeout(() => {
-        elements.successContainer.classList.add('hidden');
-    }, 3000);
+
+    if (autoHideMs > 0) {
+        successHideTimer = setTimeout(() => {
+            hideSuccess();
+        }, autoHideMs);
+    }
+}
+
+function openResultStep(stepNum, selector = '') {
+    showStep(stepNum);
+    if (!selector) return;
+
+    const target = document.querySelector(selector);
+    if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+function showBatchResultAction(message, stepNum, selector = '') {
+    showSuccess(message, {
+        actionLabel: '結果を見る',
+        autoHideMs: 20000,
+        onAction: () => {
+            openResultStep(stepNum, selector);
+        }
+    });
+}
+
+async function ensureBatchNotificationPermission() {
+    if (!state.notifyOnBatchComplete) return;
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'default') return;
+
+    try {
+        await Notification.requestPermission();
+    } catch (error) {
+        console.warn('通知許可リクエストに失敗:', error);
+    }
+}
+
+function notifyBatchCompletion(title, body, stepNum, selector = '') {
+    if (!state.notifyOnBatchComplete) return;
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    try {
+        const notification = new Notification(title, {
+            body,
+            tag: 'instaimage-batch-complete'
+        });
+
+        notification.onclick = () => {
+            window.focus();
+            openResultStep(stepNum, selector);
+            notification.close();
+        };
+    } catch (error) {
+        console.warn('通知表示に失敗:', error);
+    }
 }
 
 function displayImage(container, base64Data) {
@@ -761,6 +881,9 @@ async function startGeneration() {
 
     try {
         state.isGenerating = true;
+        if (state.generationMode === 'batch') {
+            await ensureBatchNotificationPermission();
+        }
         showLoading('テキストを解析中...', 10);
 
         state.slideData = await analyzeTextWithGemini(text);
@@ -773,6 +896,15 @@ async function startGeneration() {
         await generateDesignOptions();
 
         hideLoading();
+        if (state.generationMode === 'batch') {
+            showBatchResultAction('Batchでデザイン案の生成が完了しました', 2, '.design-options');
+            notifyBatchCompletion(
+                'Batch処理が完了しました',
+                'デザイン案の生成が完了しました。結果を確認できます。',
+                2,
+                '.design-options'
+            );
+        }
     } catch (error) {
         hideLoading();
         showError(error.message, true);
@@ -834,8 +966,9 @@ async function generateDesignOptions() {
         });
 
         try {
-            const images = await generateImagesBatch(requestItems, (jobState, elapsedSec) => {
-                showLoading(`Batch処理中... (${elapsedSec}秒経過)`, 50);
+            const images = await generateImagesBatch(requestItems, (jobState, elapsedSec, nextPollSec) => {
+                const nextPollText = nextPollSec ? ` / 次回確認 ${nextPollSec}秒後` : '';
+                showLoading(`Batch処理中... (${elapsedSec}秒経過${nextPollText})`, 50);
             });
 
             images.forEach((img, i) => {
@@ -877,7 +1010,17 @@ async function regenerateDesigns() {
         showLoading('デザイン案を再生成中...', 0);
         await generateDesignOptions();
         hideLoading();
-        showSuccess('デザイン案を再生成しました');
+        if (state.generationMode === 'batch') {
+            showBatchResultAction('Batchでデザイン案の再生成が完了しました', 2, '.design-options');
+            notifyBatchCompletion(
+                'Batch処理が完了しました',
+                'デザイン案の再生成が完了しました。結果を確認できます。',
+                2,
+                '.design-options'
+            );
+        } else {
+            showSuccess('デザイン案を再生成しました');
+        }
     } catch (error) {
         hideLoading();
         showError(error.message);
@@ -916,6 +1059,9 @@ async function generateAllSlides() {
     try {
         let prevImageBase64 = null;
         const isBatch = state.generationMode === 'batch';
+        if (isBatch) {
+            await ensureBatchNotificationPermission();
+        }
 
         // スライド要素を先に全部作成
         const slideElements = [];
@@ -940,8 +1086,9 @@ async function generateAllSlides() {
                     elements.generationStatus.textContent = `[Batch] ${i + 1}/${totalSlides}枚目を処理中...`;
                     elements.generationProgress.style.width = `${progress}%`;
 
-                    imageData = await generateImageViaBatch(prompt, prevImageBase64, (jobState, elapsedSec) => {
-                        showLoading(`[Batch] スライド ${i + 1}/${totalSlides} 処理中... (${elapsedSec}秒)`, progress);
+                    imageData = await generateImageViaBatch(prompt, prevImageBase64, (jobState, elapsedSec, nextPollSec) => {
+                        const nextPollText = nextPollSec ? ` / 次回確認 ${nextPollSec}秒後` : '';
+                        showLoading(`[Batch] スライド ${i + 1}/${totalSlides} 処理中... (${elapsedSec}秒${nextPollText})`, progress);
                         elements.generationStatus.textContent = `[Batch] ${i + 1}/${totalSlides}枚目 処理中 (${elapsedSec}秒)`;
                     });
                 } else {
@@ -971,7 +1118,17 @@ async function generateAllSlides() {
         hideLoading();
         elements.generationStatus.textContent = '生成完了！';
         elements.downloadZip.disabled = false;
-        showSuccess(isBatch ? '全スライドの生成が完了しました（Batchモード）' : '全スライドの生成が完了しました');
+        if (isBatch) {
+            showBatchResultAction('全スライドの生成が完了しました（Batchモード）', 3, '.slides-container');
+            notifyBatchCompletion(
+                'Batch処理が完了しました',
+                '全スライドの生成が完了しました。結果を確認できます。',
+                3,
+                '.slides-container'
+            );
+        } else {
+            showSuccess('全スライドの生成が完了しました');
+        }
 
     } catch (error) {
         hideLoading();
@@ -1009,12 +1166,21 @@ async function regenerateSlide(slideNum) {
     const slide = state.slideData.slides[index];
     const designStyle = DESIGN_VARIATIONS[state.selectedDesign].style;
     const prevImageBase64 = index > 0 ? state.generatedSlides[index - 1] : null;
+    const isBatch = state.generationMode === 'batch';
 
     try {
         showLoading(`スライド ${slideNum} を再生成中...`, 0);
+        if (isBatch) {
+            await ensureBatchNotificationPermission();
+        }
 
         const prompt = createSlidePrompt(slide, designStyle, prevImageBase64);
-        const imageData = await generateImage(prompt, prevImageBase64);
+        const imageData = isBatch
+            ? await generateImageViaBatch(prompt, prevImageBase64, (jobState, elapsedSec, nextPollSec) => {
+                const nextPollText = nextPollSec ? ` / 次回確認 ${nextPollSec}秒後` : '';
+                showLoading(`[Batch] スライド ${slideNum} を再生成中... (${elapsedSec}秒${nextPollText})`, 0);
+            })
+            : await generateImage(prompt, prevImageBase64);
 
         state.generatedSlides[index] = imageData;
 
@@ -1023,7 +1189,17 @@ async function regenerateSlide(slideNum) {
         displayImage(previewEl, imageData);
 
         hideLoading();
-        showSuccess(`スライド ${slideNum} を再生成しました`);
+        if (isBatch) {
+            showBatchResultAction(`スライド ${slideNum} を再生成しました（Batchモード）`, 3, `#slide-${slideNum}`);
+            notifyBatchCompletion(
+                'Batch処理が完了しました',
+                `スライド ${slideNum} の再生成が完了しました。`,
+                3,
+                `#slide-${slideNum}`
+            );
+        } else {
+            showSuccess(`スライド ${slideNum} を再生成しました`);
+        }
 
     } catch (error) {
         hideLoading();
@@ -1082,10 +1258,12 @@ async function downloadAllAsZip() {
 }
 
 function resetAll() {
+    hideSuccess();
     state = {
         apiKey: state.apiKey,
         aspectRatio: state.aspectRatio,
         generationMode: state.generationMode,
+        notifyOnBatchComplete: state.notifyOnBatchComplete,
         enabledVariations: state.enabledVariations,
         parsedSlides: null,
         slideData: null,
