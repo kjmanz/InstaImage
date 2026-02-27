@@ -6,7 +6,7 @@
 // ===== 定数 =====
 const CONFIG = {
     TEXT_MODEL: 'gemini-2.5-flash',
-    IMAGE_MODEL: 'gemini-3-pro-image-preview',
+    IMAGE_MODEL: 'gemini-3.1-flash-image-preview',
     API_BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/models',
     BRAND_NAME: '住まいるでんき館きょうしん',
     MAX_RETRIES: 3,
